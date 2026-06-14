@@ -45,8 +45,7 @@ class GrantExclusivePackModal(Modal, title="Grant Exclusive Pack"):
         except Exception as exc:
             log.exception("Admin exclusive pack grant failed for target %s", raw)
             await interaction.followup.send(
-                f"❌ Grant failed: **{type(exc).__name__}** — {str(exc)[:200]}",
-                ephemeral=True,
+                f"❌ Grant failed: **{type(exc).__name__}** — {str(exc)[:200]}", ephemeral=True
             )
 
 

@@ -40,12 +40,7 @@ class AchievementExtras:
 
 
 def format_achievement_extras(
-    *,
-    reward_money: int,
-    emoji: str,
-    reward_ball_id: int | None,
-    hidden: bool,
-    enabled: bool,
+    *, reward_money: int, emoji: str, reward_ball_id: int | None, hidden: bool, enabled: bool
 ) -> str:
     lines = [f"coins={reward_money}", f"emoji={emoji}", f"hidden={'yes' if hidden else 'no'}"]
     if reward_ball_id is not None:
@@ -73,11 +68,7 @@ def parse_achievement_extras(
     if not text:
         return (
             AchievementExtras(
-                reward_money=coins,
-                emoji=emoji[:32],
-                reward_ball_raw=ball_raw,
-                hidden=hidden,
-                enabled=enabled,
+                reward_money=coins, emoji=emoji[:32], reward_ball_raw=ball_raw, hidden=hidden, enabled=enabled
             ),
             None,
         )
@@ -109,11 +100,7 @@ def parse_achievement_extras(
 
     return (
         AchievementExtras(
-            reward_money=coins,
-            emoji=emoji[:32],
-            reward_ball_raw=ball_raw,
-            hidden=hidden,
-            enabled=enabled,
+            reward_money=coins, emoji=emoji[:32], reward_ball_raw=ball_raw, hidden=hidden, enabled=enabled
         ),
         None,
     )

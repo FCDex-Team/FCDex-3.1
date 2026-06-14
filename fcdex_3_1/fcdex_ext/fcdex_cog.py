@@ -53,7 +53,8 @@ class FcdexCog(commands.GroupCog, group_name="fcdex"):
             title="FCDex 3.1",
             subtitle="Official extra · Components v2",
             sections=[
-                "### 📦 Packs\n`/pack daily` (24h) · `/pack weekly` (7d) — stat rolls on each card\n"
+                "### 📦 Packs\n`/pack menu` — all packs, cooldowns & claim status\n"
+                "`/pack daily` (24h) · `/pack weekly` (7d) — stat rolls on each card\n"
                 "-# **Exclusive Pack** — admins only via `/fcdex admin` → **Packs**",
                 "### 🧪 Craft (SBC)\n`/craft menu` · `/craft complete name:<SBC>`",
                 "### ⚔️ Battles\n"
@@ -119,8 +120,7 @@ class FcdexCog(commands.GroupCog, group_name="fcdex"):
         await interaction.response.send_message(view=layout, ephemeral=True)  # pyright: ignore[reportArgumentType]
 
     @app_commands.command(
-        name="admin",
-        description="FCDex admin hub — shop, craft, quests, achievements, merge, boss, announce, owners",
+        name="admin", description="FCDex admin hub — shop, craft, quests, achievements, merge, boss, announce, owners"
     )
     @_admin_access_check()
     async def admin(self, interaction: discord.Interaction):

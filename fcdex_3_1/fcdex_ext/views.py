@@ -170,7 +170,9 @@ class BattleLayoutView(LayoutView):
         self.add_item(container)
 
 
-def build_battle_result_layout(battle: ActiveBattle, log_lines: list[str]) -> LayoutView:
+def build_battle_result_layout(
+    battle: ActiveBattle, log_lines: list[str], *, winner_reward_message: str | None = None
+) -> LayoutView:
     layout = LayoutView()
     container = Container()
     winner = battle.instance.winner
@@ -185,6 +187,10 @@ def build_battle_result_layout(battle: ActiveBattle, log_lines: list[str]) -> La
             )
         )
     )
+
+    if winner_reward_message:
+        container.add_item(Separator())
+        container.add_item(TextDisplay(truncate_text(f"### 🎁 Rewards\n{winner_reward_message}")))
 
     commentary = "\n".join(log_lines[-14:])
     if commentary:

@@ -8,9 +8,10 @@ from discord.ui import ActionRow, Button, Container, Separator, TextDisplay, but
 
 from ballsdex.core.discord import LayoutView
 from bd_models.models import Player
+from fcdex_3_1.fcdex_ext.broadcast_logic import DMSendOutcome
 from fcdex_3_1.fcdex_ext.tournament_bracket import explain_no_matches
 from fcdex_3_1.fcdex_ext.tournament_loot import load_match_prizes
-from fcdex_3_1.fcdex_ext.tournament_match import claim_match_victory, list_pending_matches
+from fcdex_3_1.fcdex_ext.tournament_match import claim_match_victory, list_pending_matches, notify_match_claim_rewards
 from fcdex_3_1.fcdex_ext.views import truncate_text
 from fcdex_3_1.models import (
     Tournament,
@@ -256,11 +257,19 @@ class TournamentMatchClaimRow(ActionRow):
             )
             player, _ = await Player.objects.aget_or_create(discord_id=interaction.user.id)
             guild_id = interaction.guild_id if interaction.guild else None
-            ok, message = await claim_match_victory(tournament, match, player, guild_id=guild_id)
-            if not ok:
-                await interaction.followup.send(message, ephemeral=True)
+            result = await claim_match_victory(tournament, match, player, guild_id=guild_id)
+            if not result.ok:
+                await interaction.followup.send(result.summary, ephemeral=True)
                 return
-            layout = await build_tournament_match_menu(self.owner_id, self.tournament_id, notice=message)
+            dm_outcome = await notify_match_claim_rewards(
+                interaction.client, interaction.user.id, result.reward_breakdown
+            )
+            notice = result.summary
+            if dm_outcome == DMSendOutcome.SENT:
+                notice += "\n-# Check your DMs for your full reward breakdown."
+            else:
+                await interaction.followup.send(result.reward_breakdown, ephemeral=True)
+            layout = await build_tournament_match_menu(self.owner_id, self.tournament_id, notice=notice)
             await interaction.edit_original_response(view=layout)
         except Exception:
             log.exception("Failed to claim tournament match victory")

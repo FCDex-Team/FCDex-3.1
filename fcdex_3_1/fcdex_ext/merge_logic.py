@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 import discord
 from django.db.models import Q
 
-from bd_models.models import Ball, BallInstance, Player, Special, balls
+from bd_models.models import Ball, BallInstance, Player, Special, balls, specials
 from fcdex_3_1.fcdex_ext.bd_helpers import format_instance, get_ball, instance_attack, instance_health
 from fcdex_3_1.fcdex_ext.merge_levels import (
     MAX_MERGE_LEVEL,
@@ -23,7 +23,7 @@ from fcdex_3_1.fcdex_ext.merge_quota import (
     merge_quota_limit_message,
     merge_quota_limit_reached,
 )
-from fcdex_3_1.fcdex_ext.merge_special import MERGE_SPECIAL_NAME, get_merge_special
+from fcdex_3_1.fcdex_ext.merge_special import MERGE_SPECIAL_NAME, get_merge_special_for_level, is_merge_special_name
 from fcdex_3_1.fcdex_ext.services import increment_stat
 from fcdex_3_1.models import MergeLog
 from settings.models import settings
@@ -41,14 +41,13 @@ class MergeValidationError(Exception):
 
 
 async def instance_has_merge_special(instance: BallInstance) -> bool:
-    merge_special = await get_merge_special()
-    if instance.special_id == merge_special.pk:
-        return True
-    if instance.special_id:
-        special = await Special.objects.filter(pk=instance.special_id).afirst()
-        if special is not None and special.name == MERGE_SPECIAL_NAME:
-            return True
-    return False
+    if instance.special_id is None:
+        return False
+    cached = specials.get(instance.special_id)
+    if cached is not None:
+        return is_merge_special_name(cached.name)
+    special = await Special.objects.filter(pk=instance.special_id).afirst()
+    return special is not None and is_merge_special_name(special.name)
 
 
 async def get_instance_merge_level(instance: BallInstance) -> int | None:
@@ -213,7 +212,7 @@ async def execute_merge(
 ) -> tuple[BallInstance, str, discord.File | None, int]:
     target_level = await validate_merge_batch(player, instances)
     cfg = get_merge_level_config(target_level)
-    merge_special = await get_merge_special()
+    merge_special = await get_merge_special_for_level(target_level)
     result_ball = await get_ball(instances[0])
 
     instance_ids = [instance.pk for instance in instances]

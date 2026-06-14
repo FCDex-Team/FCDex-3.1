@@ -3,12 +3,7 @@ from __future__ import annotations
 import random
 
 from bd_models.models import Ball, BallInstance, Player
-from fcdex_3_1.models import (
-    TournamentMatch,
-    TournamentMatchPrize,
-    TournamentParticipationReward,
-    TournamentPrizeType,
-)
+from fcdex_3_1.models import TournamentMatch, TournamentMatchPrize, TournamentParticipationReward, TournamentPrizeType
 
 PrizeEntry = TournamentMatchPrize | TournamentParticipationReward
 

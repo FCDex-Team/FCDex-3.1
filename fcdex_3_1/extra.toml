@@ -2,7 +2,7 @@
 # Install via config/extra.toml (see README); this file documents runtime requirements.
 
 [ballsdex]
-minimum_version = "3.0.0"
+minimum_version = "3.0.1"
 
 [economy]
 # Coin shop, packs, quests, tournaments, and SBC rewards use bd_models.Player.money.

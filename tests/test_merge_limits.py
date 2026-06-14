@@ -163,7 +163,7 @@ def _load_merge_logic_for_validation_tests():
     bd_models_models.BallInstance = object
     bd_models_models.Player = object
     bd_models_models.balls = {1: SimpleNamespace(pk=1, enabled=True, rarity=10, attack=100, health=80)}
-    bd_models_models.specials = {}
+    bd_models_models.specials = {42: SimpleNamespace(pk=42, name="FCDex Merge")}
 
     special_manager = MagicMock()
     special_manager.filter.return_value.afirst = AsyncMock(return_value=None)

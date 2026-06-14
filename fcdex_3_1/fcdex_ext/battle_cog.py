@@ -117,7 +117,7 @@ class ActiveBattle:
         self.close()
         await interaction.response.defer()
         log_lines = list(gen_battle(self.instance))
-        result_layout = build_battle_result_layout(self, log_lines)
+        winner_reward_message: str | None = None
 
         winner_member = self.resolve_winner()
         if winner_member is None:
@@ -135,21 +135,42 @@ class ActiveBattle:
             await bump_quest(loser_player, "battle_play")
 
             if self.tournament_match_id is not None:
-                from fcdex_3_1.fcdex_ext.tournament_match import apply_verified_battle_result
+                from fcdex_3_1.fcdex_ext.broadcast_logic import DMSendOutcome
+                from fcdex_3_1.fcdex_ext.tournament_match import (
+                    apply_verified_battle_result,
+                    notify_match_claim_rewards,
+                )
 
                 guild_id = interaction.guild_id if interaction.guild else None
-                ok, tournament_message = await apply_verified_battle_result(
-                    self.tournament_match_id, winner_player, guild_id=guild_id
-                )
+                result = await apply_verified_battle_result(self.tournament_match_id, winner_player, guild_id=guild_id)
                 channel = interaction.channel
                 if isinstance(channel, discord.abc.Messageable):
-                    if ok:
-                        await channel.send(f"🏟️ {winner_member.mention} {tournament_message}")
+                    if result.ok:
+                        dm_outcome = await notify_match_claim_rewards(
+                            interaction.client, winner_member.id, result.reward_breakdown
+                        )
+                        channel_message = f"🏟️ {winner_member.mention} {result.summary}"
+                        if dm_outcome == DMSendOutcome.SENT:
+                            channel_message += "\n-# Check your DMs for your full reward breakdown."
+                        elif result.reward_breakdown:
+                            channel_message += f"\n\n{result.reward_breakdown}"
+                        await channel.send(channel_message)
                     else:
                         await channel.send(
                             f"-# Tournament match **#{self.tournament_match_id}** "
-                            f"could not be recorded: {tournament_message}"
+                            f"could not be recorded: {result.summary}"
                         )
+            else:
+                from fcdex_3_1.fcdex_ext.battle_rewards import grant_battle_challenge_reward
+
+                guild_id = interaction.guild_id if interaction.guild else None
+                ok, reward_result = await grant_battle_challenge_reward(winner_player, guild_id=guild_id)
+                if ok:
+                    winner_reward_message = reward_result.message  # type: ignore[union-attr]
+                else:
+                    winner_reward_message = str(reward_result)
+
+        result_layout = build_battle_result_layout(self, log_lines, winner_reward_message=winner_reward_message)
 
         if interaction.message:
             await interaction.message.edit(view=result_layout, attachments=[battle_log_file(log_lines)])

@@ -43,7 +43,9 @@ class TournamentRewardsPickView(LayoutView):
         container = Container()
         if not tournaments:
             container.add_item(
-                TextDisplay("# 🎖️ Participation rewards\n*No tournaments yet — create one in `/tournament manage` first.*")
+                TextDisplay(
+                    "# 🎖️ Participation rewards\n*No tournaments yet — create one in `/tournament manage` first.*"
+                )
             )
         else:
             container.add_item(
@@ -96,11 +98,7 @@ class TournamentRewardsTournamentSelect(discord.ui.Select):
 async def build_tournament_rewards_hub(owner_id: int, tournament_id: int, *, notice: str = "") -> LayoutView:
     tournament = await Tournament.objects.aget(pk=tournament_id)
     pool = await format_rewards_pool(tournament_id)
-    body = (
-        f"# 🎖️ {tournament.name}\n"
-        "-# Participation rewards · players need at least one **completed** match\n\n"
-        f"{pool}"
-    )
+    body = f"# 🎖️ {tournament.name}\n-# Participation rewards · players need at least one **completed** match\n\n{pool}"
     if notice:
         body = f"{notice}\n\n{body}"
     reward_options = await _reward_select_options(tournament_id)
@@ -108,13 +106,7 @@ async def build_tournament_rewards_hub(owner_id: int, tournament_id: int, *, not
 
 
 class TournamentRewardsHubView(LayoutView):
-    def __init__(
-        self,
-        owner_id: int,
-        tournament_id: int,
-        body: str,
-        reward_options: list[discord.SelectOption],
-    ):
+    def __init__(self, owner_id: int, tournament_id: int, body: str, reward_options: list[discord.SelectOption]):
         super().__init__(timeout=600)
         self.owner_id = owner_id
         self.tournament_id = tournament_id
@@ -129,10 +121,7 @@ class TournamentRewardsHubView(LayoutView):
             row = ActionRow()
             row.add_item(
                 TournamentRewardSelect(
-                    self.owner_id,
-                    self.tournament_id,
-                    reward_options,
-                    placeholder="Select a reward…",
+                    self.owner_id, self.tournament_id, reward_options, placeholder="Select a reward…"
                 )
             )
             container.add_item(row)
@@ -166,14 +155,7 @@ async def _reward_select_options(tournament_id: int) -> list[discord.SelectOptio
 
 
 class TournamentRewardSelect(discord.ui.Select):
-    def __init__(
-        self,
-        owner_id: int,
-        tournament_id: int,
-        options: list[discord.SelectOption],
-        *,
-        placeholder: str,
-    ):
+    def __init__(self, owner_id: int, tournament_id: int, options: list[discord.SelectOption], *, placeholder: str):
         super().__init__(placeholder=placeholder, options=options, min_values=1, max_values=1)
         self.owner_id = owner_id
         self.tournament_id = tournament_id
@@ -186,9 +168,7 @@ class TournamentRewardSelect(discord.ui.Select):
         eligible = await count_eligible_participants(self.tournament_id, reward.pk)
         label = reward.label or reward.get_prize_type_display()
         view = await build_tournament_rewards_hub(
-            self.owner_id,
-            self.tournament_id,
-            notice=f"Selected **{label}** · **{eligible}** player(s) still eligible.",
+            self.owner_id, self.tournament_id, notice=f"Selected **{label}** · **{eligible}** player(s) still eligible."
         )
         await interaction.response.edit_message(view=view)
 
@@ -212,7 +192,8 @@ class TournamentRewardsControls(ActionRow):
             await _deny_owner(interaction)
             return
         rewards = [
-            r async for r in TournamentParticipationReward.objects.filter(tournament_id=self.tournament_id).order_by("pk")
+            r
+            async for r in TournamentParticipationReward.objects.filter(tournament_id=self.tournament_id).order_by("pk")
         ]
         if not rewards:
             await interaction.response.send_message("Create a reward first.", ephemeral=True)
@@ -236,7 +217,8 @@ class TournamentRewardsControls(ActionRow):
             await _deny_owner(interaction)
             return
         rewards = [
-            r async for r in TournamentParticipationReward.objects.filter(tournament_id=self.tournament_id).order_by("pk")
+            r
+            async for r in TournamentParticipationReward.objects.filter(tournament_id=self.tournament_id).order_by("pk")
         ]
         if not rewards:
             await interaction.response.send_message("No rewards to delete.", ephemeral=True)
@@ -263,7 +245,9 @@ class TournamentRewardsGrantPickView(LayoutView):
     def _build(self, rewards: list[TournamentParticipationReward]) -> None:
         self.clear_items()
         container = Container()
-        container.add_item(TextDisplay("# 🎁 Grant participation reward\n-# Pick which reward to send to all eligible players"))
+        container.add_item(
+            TextDisplay("# 🎁 Grant participation reward\n-# Pick which reward to send to all eligible players")
+        )
         container.add_item(Separator())
         row = ActionRow()
         row.add_item(
@@ -320,7 +304,9 @@ class TournamentRewardsDeletePickView(LayoutView):
     def _build(self, rewards: list[TournamentParticipationReward]) -> None:
         self.clear_items()
         container = Container()
-        container.add_item(TextDisplay("# 🗑️ Delete participation reward\n-# This removes the reward and its grant history"))
+        container.add_item(
+            TextDisplay("# 🗑️ Delete participation reward\n-# This removes the reward and its grant history")
+        )
         container.add_item(Separator())
         row = ActionRow()
         row.add_item(
@@ -369,9 +355,7 @@ class TournamentRewardsDeleteSelect(discord.ui.Select):
 
 class ParticipationRewardCreateModal(Modal, title="Create participation reward"):
     label = TextInput(label="Label", placeholder="Participation prize", required=False, max_length=64)
-    description = TextInput(
-        label="Description", style=discord.TextStyle.paragraph, required=False, max_length=500
-    )
+    description = TextInput(label="Description", style=discord.TextStyle.paragraph, required=False, max_length=500)
     prize_type = TextInput(
         label="Prize type", placeholder="coins, random_common, or ball", required=True, max_length=16
     )

@@ -15,11 +15,7 @@ class Migration(migrations.Migration):
             model_name="packclaim",
             name="pack_type",
             field=models.CharField(
-                choices=[
-                    ("daily", "Daily Pack"),
-                    ("weekly", "Weekly Pack"),
-                    ("exclusive", "Exclusive Pack"),
-                ],
+                choices=[("daily", "Daily Pack"), ("weekly", "Weekly Pack"), ("exclusive", "Exclusive Pack")],
                 max_length=16,
             ),
         ),

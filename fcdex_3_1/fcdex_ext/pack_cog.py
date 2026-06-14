@@ -8,8 +8,8 @@ from discord import app_commands
 from discord.ext import commands
 
 from bd_models.models import Player
-from fcdex_3_1.fcdex_ext.pack_logic import PackOpenSuccess, grant_player_pack
-from fcdex_3_1.fcdex_ext.pack_views import build_pack_open_layout
+from fcdex_3_1.fcdex_ext.pack_logic import PACK_TYPE_LABELS, PackOpenSuccess, grant_player_pack, pack_status_entries
+from fcdex_3_1.fcdex_ext.pack_views import build_pack_menu_layout, build_pack_open_layout
 from fcdex_3_1.models import PackType
 
 if TYPE_CHECKING:
@@ -53,10 +53,22 @@ class PackCog(commands.GroupCog, group_name="pack"):
             await interaction.followup.send(**kwargs)  # pyright: ignore[reportArgumentType]
         except Exception as exc:
             log.exception("Pack open failed for user %s type %s", interaction.user.id, pack_type)
-            label = PackType(pack_type).label
+            label = PACK_TYPE_LABELS[pack_type]
             await interaction.followup.send(
-                f"❌ Could not open **{label}**: **{type(exc).__name__}** — {str(exc)[:200]}",
-                ephemeral=True,
+                f"❌ Could not open **{label}**: **{type(exc).__name__}** — {str(exc)[:200]}", ephemeral=True
+            )
+
+    @app_commands.command(name="menu", description="View all packs — rewards, cooldowns, and claim status")
+    async def menu(self, interaction: discord.Interaction):
+        try:
+            player, _ = await Player.objects.aget_or_create(discord_id=interaction.user.id)
+            entries = await pack_status_entries(player)
+            layout = build_pack_menu_layout(entries)
+            await interaction.response.send_message(view=layout, ephemeral=True)  # pyright: ignore[reportArgumentType]
+        except Exception as exc:
+            log.exception("Pack menu failed for user %s", interaction.user.id)
+            await interaction.response.send_message(
+                f"❌ Could not load pack status: **{type(exc).__name__}** — {str(exc)[:200]}", ephemeral=True
             )
 
     @app_commands.command(name="daily", description="Open Daily Pack — 3 clubballs with stat rolls (24h cooldown)")

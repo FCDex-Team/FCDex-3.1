@@ -36,14 +36,7 @@ def broadcast_admin_check():
 
 
 class BroadcastConfirmView(View):
-    def __init__(
-        self,
-        *,
-        owner_id: int,
-        kind: BroadcastKind,
-        message: str,
-        recipient_label: str,
-    ):
+    def __init__(self, *, owner_id: int, kind: BroadcastKind, message: str, recipient_label: str):
         super().__init__(timeout=180)
         self.owner_id = owner_id
         self.kind = kind
@@ -66,9 +59,7 @@ class BroadcastConfirmView(View):
         for child in self.children:
             child.disabled = True  # type: ignore[union-attr]
         await interaction.response.defer(ephemeral=True)
-        await interaction.edit_original_response(
-            content="Broadcast started…", embed=None, view=self
-        )
+        await interaction.edit_original_response(content="Broadcast started…", embed=None, view=self)
         bot: BallsDexBot = interaction.client  # type: ignore[assignment]
         if self.kind == "dm":
             await _run_dm_broadcast(interaction, bot, self.message)
@@ -79,9 +70,7 @@ class BroadcastConfirmView(View):
     async def cancel(self, interaction: discord.Interaction, button: Button) -> None:
         for child in self.children:
             child.disabled = True  # type: ignore[union-attr]
-        await interaction.response.edit_message(
-            content="Broadcast cancelled.", embed=None, view=self
-        )
+        await interaction.response.edit_message(content="Broadcast cancelled.", embed=None, view=self)
 
 
 async def _edit_status(interaction: discord.Interaction, text: str) -> None:
@@ -105,12 +94,7 @@ async def _run_server_broadcast(interaction: discord.Interaction, bot: BallsDexB
     await _edit_status(interaction, tally.format_server_summary(guilds=guilds, skipped=skipped))
 
 
-async def _prompt_broadcast(
-    interaction: discord.Interaction,
-    *,
-    kind: BroadcastKind,
-    message: str,
-) -> None:
+async def _prompt_broadcast(interaction: discord.Interaction, *, kind: BroadcastKind, message: str) -> None:
     ok, result = validate_broadcast_message(message)
     if not ok:
         await interaction.response.send_message(result, ephemeral=True)
@@ -133,18 +117,11 @@ async def _prompt_broadcast(
 
     embed = discord.Embed(
         title=f"Confirm · {title}",
-        description=(
-            f"{recipient_label}\n\n"
-            f"**Preview**\n{preview_broadcast_message(cleaned)}\n\n"
-            f"-# {warning}"
-        ),
+        description=(f"{recipient_label}\n\n**Preview**\n{preview_broadcast_message(cleaned)}\n\n-# {warning}"),
         color=discord.Color.orange(),
     )
     view = BroadcastConfirmView(
-        owner_id=interaction.user.id,
-        kind=kind,
-        message=cleaned,
-        recipient_label=recipient_label,
+        owner_id=interaction.user.id, kind=kind, message=cleaned, recipient_label=recipient_label
     )
     await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
@@ -156,8 +133,7 @@ class BroadcastCog(commands.GroupCog, group_name="broadcast"):
         self.bot = bot
 
     @app_commands.command(
-        name="dm",
-        description="DM every player who has caught at least one clubball (admin · confirmation required)",
+        name="dm", description="DM every player who has caught at least one clubball (admin · confirmation required)"
     )
     @app_commands.describe(message=f"Announcement text (max {DISCORD_MESSAGE_MAX} characters)")
     @broadcast_admin_check()
@@ -165,8 +141,7 @@ class BroadcastCog(commands.GroupCog, group_name="broadcast"):
         await _prompt_broadcast(interaction, kind="dm", message=message)
 
     @app_commands.command(
-        name="dm_announcement",
-        description="Alias for /broadcast dm — DM players with at least one clubball",
+        name="dm_announcement", description="Alias for /broadcast dm — DM players with at least one clubball"
     )
     @app_commands.describe(message=f"Announcement text (max {DISCORD_MESSAGE_MAX} characters)")
     @broadcast_admin_check()
@@ -174,8 +149,7 @@ class BroadcastCog(commands.GroupCog, group_name="broadcast"):
         await _prompt_broadcast(interaction, kind="dm", message=message)
 
     @app_commands.command(
-        name="server",
-        description="Post an announcement in every server the bot is in (admin · confirmation required)",
+        name="server", description="Post an announcement in every server the bot is in (admin · confirmation required)"
     )
     @app_commands.describe(message=f"Announcement text (max {DISCORD_MESSAGE_MAX} characters)")
     @broadcast_admin_check()
@@ -183,8 +157,7 @@ class BroadcastCog(commands.GroupCog, group_name="broadcast"):
         await _prompt_broadcast(interaction, kind="server", message=message)
 
     @app_commands.command(
-        name="server_announcement",
-        description="Alias for /broadcast server — announce in all guilds",
+        name="server_announcement", description="Alias for /broadcast server — announce in all guilds"
     )
     @app_commands.describe(message=f"Announcement text (max {DISCORD_MESSAGE_MAX} characters)")
     @broadcast_admin_check()

@@ -7,8 +7,8 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 import discord
-from bd_models.models import Player
 
+from bd_models.models import Player
 from fcdex_3_1.fcdex_ext.leaderboard_logic import EXCLUDE_IDS
 
 log = logging.getLogger("fcdex_3_1.broadcast")

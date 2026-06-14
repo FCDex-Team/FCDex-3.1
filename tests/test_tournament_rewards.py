@@ -108,11 +108,7 @@ def test_create_participation_reward_requires_coins(logic):
     with pytest.raises(ValueError, match="coin amount"):
         asyncio.run(
             logic.create_participation_reward(
-                tournament,
-                label="x",
-                description="",
-                prize_type=logic.TournamentPrizeType.COINS,
-                coins=0,
+                tournament, label="x", description="", prize_type=logic.TournamentPrizeType.COINS, coins=0
             )
         )
     create.assert_not_called()

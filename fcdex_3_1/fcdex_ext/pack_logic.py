@@ -18,24 +18,35 @@ if TYPE_CHECKING:
 
 log = logging.getLogger("fcdex_3_1.pack")
 
-PACK_COOLDOWNS = {
-    PackType.DAILY: timedelta(hours=24),
-    PackType.WEEKLY: timedelta(days=7),
-}
+PACK_COOLDOWNS = {PackType.DAILY: timedelta(hours=24), PackType.WEEKLY: timedelta(days=7)}
 
 PACK_REWARDS = {
     PackType.DAILY: {"coins_min": 250, "coins_max": 750, "balls": 3},
     PackType.WEEKLY: {"coins_min": 1_000, "coins_max": 2_500, "balls": 5},
 }
 
-EXCLUSIVE_REWARDS = {
-    "coins_min": 15_000,
-    "coins_max": 45_000,
-    "balls": 5,
-    "special_chance": 0.7,
-}
+EXCLUSIVE_REWARDS = {"coins_min": 15_000, "coins_max": 45_000, "balls": 5, "special_chance": 0.7}
 
 USER_PACK_TYPES = frozenset({PackType.DAILY, PackType.WEEKLY})
+
+PACK_STATUS_SUMMARIES = {
+    PackType.DAILY: "3 clubballs · 250–750 coins · stat rolls",
+    PackType.WEEKLY: "5 clubballs · 1,000–2,500 coins · stat rolls",
+    PackType.EXCLUSIVE: "5 rare clubballs · 15k–45k coins · high stats · specials",
+}
+
+PACK_TYPE_LABELS = {PackType.DAILY: "Daily Pack", PackType.WEEKLY: "Weekly Pack", PackType.EXCLUSIVE: "Exclusive Pack"}
+
+
+@dataclass(frozen=True)
+class PackStatusEntry:
+    pack_type: str
+    label: str
+    rewards_summary: str
+    status_emoji: str
+    status_text: str
+    claimable: bool
+    command: str | None
 
 
 @dataclass(frozen=True)
@@ -83,19 +94,10 @@ def _server_bonus_caps() -> tuple[int, int]:
 def roll_pack_stat_bonuses(pack_type: str) -> tuple[int, int]:
     max_atk, max_hp = _server_bonus_caps()
     if pack_type == PackType.EXCLUSIVE:
-        return (
-            random.randint(max(max_atk * 3 // 4, 1), max_atk),
-            random.randint(max(max_hp * 3 // 4, 1), max_hp),
-        )
+        return (random.randint(max(max_atk * 3 // 4, 1), max_atk), random.randint(max(max_hp * 3 // 4, 1), max_hp))
     if pack_type == PackType.WEEKLY:
-        return (
-            random.randint(-max_atk // 2, max_atk),
-            random.randint(-max_hp // 2, max_hp),
-        )
-    return (
-        random.randint(-max_atk, max_atk),
-        random.randint(-max_hp, max_hp),
-    )
+        return (random.randint(-max_atk // 2, max_atk), random.randint(-max_hp // 2, max_hp))
+    return (random.randint(-max_atk, max_atk), random.randint(-max_hp, max_hp))
 
 
 def _special_is_active(special: Special, now: datetime, *, min_dt: datetime, max_dt: datetime) -> bool:
@@ -157,6 +159,92 @@ async def _pick_pack_ball(*, rare_bias: bool = False) -> Ball | None:
     if not pool:
         return None
     return random.choice(pool)
+
+
+async def grant_random_clubball(
+    player: Player,
+    *,
+    guild_id: int | None,
+    pack_type: str = PackType.DAILY,
+    special_chance: float = 0.0,
+    rare_bias: bool = False,
+) -> PackRewardLine | None:
+    ball = await _pick_pack_ball(rare_bias=rare_bias)
+    if ball is None:
+        return None
+    attack_bonus, health_bonus = roll_pack_stat_bonuses(pack_type)
+    special: Special | None = None
+    if random.random() < special_chance:
+        special = await pick_random_special()
+    await BallInstance.objects.acreate(
+        ball=ball,
+        player=player,
+        attack_bonus=attack_bonus,
+        health_bonus=health_bonus,
+        server_id=guild_id,
+        special=special,
+    )
+    return PackRewardLine(
+        country=ball.country,
+        attack_bonus=attack_bonus,
+        health_bonus=health_bonus,
+        special_name=special.name if special else None,
+    )
+
+
+def _format_cooldown(remaining: timedelta) -> str:
+    hours = int(remaining.total_seconds() // 3600)
+    mins = int((remaining.total_seconds() % 3600) // 60)
+    return f"{hours}h {mins}m"
+
+
+async def pack_status_entries(player: Player) -> list[PackStatusEntry]:
+    entries: list[PackStatusEntry] = []
+    for pack_type in (PackType.DAILY, PackType.WEEKLY, PackType.EXCLUSIVE):
+        label = PACK_TYPE_LABELS[pack_type]
+        summary = PACK_STATUS_SUMMARIES[pack_type]
+        if pack_type == PackType.EXCLUSIVE:
+            entries.append(
+                PackStatusEntry(
+                    pack_type=pack_type,
+                    label=label,
+                    rewards_summary=summary,
+                    status_emoji="🛡️",
+                    status_text="Admin only — not claimable",
+                    claimable=False,
+                    command=None,
+                )
+            )
+            continue
+
+        last = await last_pack_claim(player, pack_type)
+        remaining = cooldown_remaining(last, pack_type)
+        command = f"/pack {pack_type}"
+        if remaining is None:
+            entries.append(
+                PackStatusEntry(
+                    pack_type=pack_type,
+                    label=label,
+                    rewards_summary=summary,
+                    status_emoji="✅",
+                    status_text="Ready to claim",
+                    claimable=True,
+                    command=command,
+                )
+            )
+        else:
+            entries.append(
+                PackStatusEntry(
+                    pack_type=pack_type,
+                    label=label,
+                    rewards_summary=summary,
+                    status_emoji="⏳",
+                    status_text=f"Cooldown — {_format_cooldown(remaining)}",
+                    claimable=False,
+                    command=command,
+                )
+            )
+    return entries
 
 
 def format_pack_open_message(pack_label: str, coins: int, reward_lines: list[PackRewardLine]) -> str:
@@ -236,7 +324,7 @@ async def _grant_pack_rewards(
             )
         )
 
-    pack_label = PackType(pack_type).label
+    pack_label = PACK_TYPE_LABELS[pack_type]
     message = format_pack_open_message(pack_label, coins, reward_lines)
     return PackOpenSuccess(
         message=message,
@@ -257,15 +345,10 @@ async def grant_player_pack(
     if remaining := cooldown_remaining(last, pack_type):
         hours = int(remaining.total_seconds() // 3600)
         mins = int((remaining.total_seconds() % 3600) // 60)
-        return False, f"**{pack_enum.label}** is on cooldown — try again in **{hours}h {mins}m**."
+        return False, f"**{PACK_TYPE_LABELS[pack_type]}** is on cooldown — try again in **{hours}h {mins}m**."
 
     success = await _grant_pack_rewards(
-        player,
-        pack_type,
-        guild_id=guild_id,
-        rewards=PACK_REWARDS[pack_enum],
-        rare_bias=False,
-        special_chance=0.0,
+        player, pack_type, guild_id=guild_id, rewards=PACK_REWARDS[pack_enum], rare_bias=False, special_chance=0.0
     )
     await PackClaim.objects.acreate(player=player, pack_type=pack_type)
     if pack_type == PackType.DAILY:

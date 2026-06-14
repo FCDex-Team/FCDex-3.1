@@ -30,7 +30,7 @@ from fcdex_3_1.fcdex_ext.merge_quota import (
     get_merge_quota_settings,
     get_merge_quota_snapshot,
 )
-from fcdex_3_1.fcdex_ext.merge_special import MERGE_SPECIAL_NAME, get_merge_special
+from fcdex_3_1.fcdex_ext.merge_special import MERGE_SPECIAL_NAME, get_merge_special_for_level
 from fcdex_3_1.fcdex_ext.views import truncate_text
 
 if TYPE_CHECKING:
@@ -136,6 +136,31 @@ def _selectable(summary: MergeClubballSummary) -> bool:
     return sum(counts.get(level, 0) for level in range(0, MAX_MERGE_LEVEL)) > 0
 
 
+def _resolve_selected_ball_id(selectable: list[MergeClubballSummary], selected_ball_id: int | None) -> int | None:
+    """Auto-select when there is only one mergeable clubball so the ladder is visible immediately."""
+    if selected_ball_id is not None:
+        return selected_ball_id
+    if len(selectable) == 1:
+        return selectable[0].ball.pk
+    return None
+
+
+def _forge_button_label(counts: dict[int, int] | None, target_level: int | None) -> tuple[str, bool]:
+    if target_level is not None:
+        return f"Forge {get_merge_level_emoji(target_level)} L{target_level}", False
+    if counts is not None:
+        open_level = _open_level(counts)
+        cfg = get_merge_level_config(open_level)
+        progress = _progress_count(counts, open_level)
+        remaining = max(0, cfg.input_count - progress)
+        if remaining > 0:
+            return (
+                f"Need {remaining}× {_input_label(open_level)} for {get_merge_level_emoji(open_level)} L{open_level}",
+                True,
+            )
+    return "Select a clubball to forge", True
+
+
 def _find_summary(summaries: list[MergeClubballSummary], ball_id: int | None) -> MergeClubballSummary | None:
     if ball_id is None:
         return None
@@ -194,11 +219,7 @@ async def _minimal_merge_notice_view(owner_id: int, notice: str) -> LayoutView:
 
 
 async def _send_merge_notice(
-    interaction: Interaction,
-    owner_id: int,
-    notice: str,
-    *,
-    prefer_panel: bool = True,
+    interaction: Interaction, owner_id: int, notice: str, *, prefer_panel: bool = True
 ) -> None:
     """Show a merge message in the panel when possible, otherwise as an ephemeral follow-up."""
     if prefer_panel:
@@ -222,12 +243,7 @@ async def _send_merge_notice(
 
 
 async def _show_merge_panel(
-    interaction: Interaction,
-    bot: BallsDexBot,
-    owner_id: int,
-    *,
-    selected_ball_id: int | None = None,
-    notice: str = "",
+    interaction: Interaction, bot: BallsDexBot, owner_id: int, *, selected_ball_id: int | None = None, notice: str = ""
 ) -> None:
     try:
         layout = await build_merge_picker_view(bot, owner_id, selected_ball_id=selected_ball_id, notice=notice)
@@ -293,16 +309,21 @@ class MergeClubballSelect(discord.ui.Select):
 
 
 class MergeActionRow(ActionRow):
-    def __init__(self, owner_id: int, ball_id: int | None, *, can_forge: bool, target_level: int | None):
+    def __init__(
+        self,
+        owner_id: int,
+        ball_id: int | None,
+        *,
+        can_forge: bool,
+        target_level: int | None,
+        counts: dict[int, int] | None = None,
+    ):
         super().__init__()
         self.owner_id = owner_id
         self.ball_id = ball_id
-        if target_level is None:
-            self.forge_button.label = "No forge available"
-            self.forge_button.disabled = True
-        else:
-            self.forge_button.label = f"Forge {get_merge_level_emoji(target_level)} L{target_level}"
-            self.forge_button.disabled = not can_forge
+        label, disabled = _forge_button_label(counts, target_level)
+        self.forge_button.label = label[:80]
+        self.forge_button.disabled = disabled or not can_forge
 
     @button(label="Forge next", style=discord.ButtonStyle.success, emoji="✨")
     async def forge_button(self, interaction: Interaction, button: Button):
@@ -319,8 +340,7 @@ class MergeActionRow(ActionRow):
             log.warning("Merge forge defer failed for user %s: %s", self.owner_id, exc)
             try:
                 await interaction.response.send_message(
-                    "❌ Could not start forging — Discord rejected the interaction. Run `/merge` again.",
-                    ephemeral=True,
+                    "❌ Could not start forging — Discord rejected the interaction. Run `/merge` again.", ephemeral=True
                 )
             except discord.HTTPException:
                 pass
@@ -329,11 +349,7 @@ class MergeActionRow(ActionRow):
         bot = cast("BallsDexBot", interaction.client)
         try:
             await _show_merge_panel(
-                interaction,
-                bot,
-                self.owner_id,
-                selected_ball_id=self.ball_id,
-                notice="⏳ Forging your next tier…",
+                interaction, bot, self.owner_id, selected_ball_id=self.ball_id, notice="⏳ Forging your next tier…"
             )
             player, _ = await Player.objects.aget_or_create(discord_id=self.owner_id)
             summaries = await _load_merge_summaries(player)
@@ -369,12 +385,8 @@ class MergeActionRow(ActionRow):
                 return
 
             await validate_merge_batch(player, instances)
-            _, summary_text, _, _ = await execute_merge(
-                player, instances, guild_id=interaction.guild_id, bot=bot
-            )
-            await _show_merge_panel(
-                interaction, bot, self.owner_id, selected_ball_id=self.ball_id, notice=summary_text
-            )
+            _, summary_text, _, _ = await execute_merge(player, instances, guild_id=interaction.guild_id, bot=bot)
+            await _show_merge_panel(interaction, bot, self.owner_id, selected_ball_id=self.ball_id, notice=summary_text)
         except MergeValidationError as exc:
             await _show_merge_panel(
                 interaction, bot, self.owner_id, selected_ball_id=self.ball_id, notice=f"❌ {exc.message}"
@@ -413,7 +425,8 @@ async def build_merge_picker_view(
     player, _ = await Player.objects.aget_or_create(discord_id=owner_id)
     summaries = await _load_merge_summaries(player)
     selectable = [summary for summary in summaries if _selectable(summary)]
-    selected = _find_summary(summaries, selected_ball_id) if selected_ball_id is not None else None
+    selected_ball_id = _resolve_selected_ball_id(selectable, selected_ball_id)
+    selected = _find_summary(summaries, selected_ball_id)
 
     quota_settings = await get_merge_quota_settings()
     quota_snapshot = await get_merge_quota_snapshot(player)
@@ -444,7 +457,7 @@ async def build_merge_picker_view(
         counts = selected.counts
         open_level = _open_level(counts)
         target_level = _current_target_level(counts)
-        special = await get_merge_special()
+        special = await get_merge_special_for_level(target_level or 1)
 
         if target_level is not None:
             base_attack, base_health, final_attack, final_health = preview_merge_stats(selected.ball, target_level)
@@ -456,9 +469,13 @@ async def build_merge_picker_view(
                 f"(`{base_attack}` / `{base_health}` base)"
             )
         else:
+            cfg = get_merge_level_config(open_level)
+            progress = _progress_count(counts, open_level)
+            remaining = max(0, cfg.input_count - progress)
             next_line = (
-                f"🔒 **Current lock:** you need more **{_input_label(open_level)}** to reach "
-                f"{get_merge_level_emoji(open_level)} **L{open_level}**."
+                f"🔒 **Next tier:** {get_merge_level_emoji(open_level)} **L{open_level}** — "
+                f"progress `{progress}/{cfg.input_count}` · need **{remaining}** more **{_input_label(open_level)}** "
+                f"before you can forge."
             )
 
         ladder = "\n".join(_format_ladder_row(level, counts) for level in range(1, MAX_MERGE_LEVEL + 1))
@@ -488,6 +505,7 @@ async def build_merge_picker_view(
             selected_ball_id if selected is not None else None,
             can_forge=target_level is not None,
             target_level=target_level,
+            counts=selected.counts if selected is not None else None,
         )
     )
     layout.add_item(container)
