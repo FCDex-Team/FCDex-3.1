@@ -9,6 +9,7 @@ from discord.ui import ActionRow, Button, Container, Modal, Separator, TextDispl
 from ballsdex.core.discord import LayoutView
 from bd_models.models import Special
 from fcdex_3_1.fcdex_ext.bd_resolve import resolve_ball_input
+from fcdex_3_1.fcdex_ext.discord_emoji import option_label_with_emoji
 from fcdex_3_1.fcdex_ext.interaction_context import AdminContext, admin_context
 from fcdex_3_1.fcdex_ext.shop_logic import format_bundle_line_async, list_shop_bundles
 from fcdex_3_1.fcdex_ext.views import AdminHubBackRow, truncate_text
@@ -130,10 +131,9 @@ class ShopBundleToggleSelect(discord.ui.Select):
         self.owner_id = owner_id
         options = [
             discord.SelectOption(
-                label=b.name[:100],
+                label=option_label_with_emoji(b.name, b.emoji, default="🛒"),
                 value=str(b.pk),
                 description=f"{'On' if b.enabled else 'Off'} · {b.price:,} coins"[:100],
-                emoji=b.emoji or None,
             )
             for b in bundles[:25]
         ]

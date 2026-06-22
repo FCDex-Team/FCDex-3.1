@@ -8,6 +8,7 @@ from discord.ui import ActionRow, Container, Select, Separator, TextDisplay
 
 from ballsdex.core.discord import LayoutView
 from bd_models.models import Player
+from fcdex_3_1.fcdex_ext.discord_emoji import option_label_with_emoji
 from fcdex_3_1.fcdex_ext.shop_logic import format_bundle_line_async, list_shop_bundles, purchase_bundle
 from fcdex_3_1.fcdex_ext.views import truncate_text
 from fcdex_3_1.models import ShopBundle
@@ -26,7 +27,9 @@ class ShopBundleSelect(Select):
             desc = f"{bundle.price:,} coins"[:100]
             options.append(
                 discord.SelectOption(
-                    label=bundle.name[:100], value=str(bundle.pk), description=desc, emoji=bundle.emoji or None
+                    label=option_label_with_emoji(bundle.name, bundle.emoji, default="🛒"),
+                    value=str(bundle.pk),
+                    description=desc,
                 )
             )
         super().__init__(placeholder="Choose a bundle to buy…", options=options, min_values=1, max_values=1)

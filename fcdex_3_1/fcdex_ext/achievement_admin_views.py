@@ -10,11 +10,11 @@ from ballsdex.core.discord import LayoutView
 from fcdex_3_1.fcdex_ext.achievement_admin_util import (
     _TYPE_LABELS,
     _TYPE_VALUES,
-    _select_emoji,
     format_achievement_extras,
     normalize_achievement_type,
     parse_achievement_extras,
 )
+from fcdex_3_1.fcdex_ext.discord_emoji import option_label_with_emoji
 from fcdex_3_1.fcdex_ext.bd_resolve import resolve_ball_input
 from fcdex_3_1.fcdex_ext.interaction_context import AdminContext, admin_context
 from fcdex_3_1.fcdex_ext.views import AdminHubBackRow, truncate_text
@@ -216,12 +216,11 @@ class AchievementToggleSelect(discord.ui.Select):
         self.owner_id = owner_id
         options = [
             discord.SelectOption(
-                label=a.name[:100],
+                label=option_label_with_emoji(a.name, a.emoji, default="🏆"),
                 value=str(a.pk),
                 description=(
                     f"{'On' if a.enabled else 'Off'} · {_TYPE_LABELS.get(a.achievement_type, a.achievement_type)}"
                 )[:100],
-                emoji=_select_emoji(a.emoji),
             )
             for a in achievements[:25]
         ]
@@ -247,10 +246,9 @@ class AchievementEditSelect(discord.ui.Select):
         self.owner_id = owner_id
         options = [
             discord.SelectOption(
-                label=a.name[:100],
+                label=option_label_with_emoji(a.name, a.emoji, default="🏆"),
                 value=str(a.pk),
                 description=f"goal {a.required_count} · +{a.reward_money:,} coins"[:100],
-                emoji=_select_emoji(a.emoji),
             )
             for a in achievements[:25]
         ]
@@ -269,10 +267,9 @@ class AchievementDeleteSelect(discord.ui.Select):
         self.owner_id = owner_id
         options = [
             discord.SelectOption(
-                label=a.name[:100],
+                label=option_label_with_emoji(a.name, a.emoji, default="🏆"),
                 value=str(a.pk),
                 description="Select to confirm delete"[:100],
-                emoji=_select_emoji(a.emoji),
             )
             for a in achievements[:25]
         ]
