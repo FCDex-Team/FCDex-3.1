@@ -79,7 +79,7 @@ def _current_target_level(counts: dict[int, int]) -> int | None:
 
 def _input_label(level: int) -> str:
     if level == 1:
-        return "common copies"
+        return "common/uncommon copies"
     return f"{get_merge_level_emoji(level - 1)} L{level - 1} copies"
 
 
@@ -485,7 +485,7 @@ async def build_merge_picker_view(
             f"{quota_block}\n\n"
             f"### Ladder\n{ladder}\n\n"
             "-# Forge uses your available copies automatically: same **clubball** only, "
-            "common copies for **L1**, then same-tier forge copies for later levels.\n"
+            "common/uncommon copies for **L1**, then same-tier forge copies for later levels.\n"
             f"-# {get_merge_level_emoji(MAX_MERGE_LEVEL)} **L{MAX_MERGE_LEVEL}** is the max tier "
             "and can’t be forged again."
         )

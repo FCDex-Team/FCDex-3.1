@@ -24,17 +24,26 @@ if TYPE_CHECKING:
 log = logging.getLogger("fcdex_3_1.achievement.views")
 
 
+def _reward_message(achievement: Achievement) -> str:
+    reward = achievement.reward_ball
+    parts: list[str] = []
+    if achievement.reward_money:
+        parts.append(f"{achievement.reward_money:,} coins")
+    if reward is not None:
+        parts.append(f"**{reward.country}** card")
+    return " + ".join(parts) if parts else "bragging rights"
+
+
 async def build_catalog_body() -> str:
     lines: list[str] = []
     async for achievement in (
         Achievement.objects.filter(enabled=True, hidden=False).select_related("reward_ball").order_by("name")
     ):
-        reward = achievement.reward_ball
-        reward_text = f"{achievement.reward_money:,} coins" + (f" + **{reward.country}**" if reward else "")
+        reward_text = _reward_message(achievement)
         lines.append(
             f"{achievement.emoji} **{achievement.name}**\n"
             f"{achievement.description}\n"
-            f"-# Goal: `{achievement.required_count}` · Reward: {reward_text}"
+            f"-# Goal: `{achievement.required_count}` · Message rewards: {reward_text}"
         )
     return "\n\n".join(lines[:25]) if lines else ""
 
@@ -45,15 +54,19 @@ async def build_progress_body(owner_id: int) -> tuple[str, str]:
     await check_achievements(player)
 
     lines: list[str] = []
-    async for player_achievement in PlayerAchievement.objects.filter(player=player).select_related("achievement"):
+    async for player_achievement in (
+        PlayerAchievement.objects.filter(player=player).select_related("achievement", "achievement__reward_ball")
+    ):
         ach = player_achievement.achievement
         status = (
             "✅ Claimed"
             if player_achievement.claimed_at
             else ("🎉 Ready" if achievement_is_complete(player_achievement, ach) else "⏳ In progress")
         )
+        reward_text = _reward_message(ach)
         lines.append(
-            f"{ach.emoji} **{ach.name}** · `{format_achievement_progress(player_achievement, ach)}`\n-# {status}"
+            f"{ach.emoji} **{ach.name}** · `{format_achievement_progress(player_achievement, ach)}`\n"
+            f"-# {status} · Message rewards: {reward_text}"
         )
 
     stats = await get_or_create_stats(player)
