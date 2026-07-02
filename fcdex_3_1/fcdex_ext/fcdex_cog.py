@@ -35,7 +35,7 @@ if TYPE_CHECKING:
 def _admin_access_check():
     async def predicate(interaction: discord.Interaction) -> bool:
         if interaction.guild is None:
-            return True
+            return await interaction.client.is_owner(interaction.user)
         return bool(interaction.user.guild_permissions.manage_guild)
 
     return app_commands.check(predicate)

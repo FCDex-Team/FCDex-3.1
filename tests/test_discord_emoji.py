@@ -1,10 +1,6 @@
 from __future__ import annotations
 
-from fcdex_3_1.fcdex_ext.discord_emoji import (
-    option_label_with_emoji,
-    select_option_emoji,
-    unicode_emoji_or_default,
-)
+from fcdex_3_1.fcdex_ext.discord_emoji import option_label_with_emoji, select_option_emoji, unicode_emoji_or_default
 
 
 def test_select_option_emoji_rejects_plain_text() -> None:
