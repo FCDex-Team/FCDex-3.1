@@ -54,6 +54,7 @@ class TournamentAdmin(admin.ModelAdmin):
         "name",
         "status",
         "host",
+        "max_participants",
         "betting_enabled",
         "scheduled_start_at",
         "scheduled_end_at",
@@ -65,7 +66,21 @@ class TournamentAdmin(admin.ModelAdmin):
     search_fields = ("name", "description", "rules")
     readonly_fields = ("created_at", "started_at", "ended_at")
     fieldsets = (
-        (None, {"fields": ("name", "description", "rules", "host", "status", "semifinal_cutoff", "match_win_reward")}),
+        (
+            None,
+            {
+                "fields": (
+                    "name",
+                    "description",
+                    "rules",
+                    "host",
+                    "status",
+                    "max_participants",
+                    "semifinal_cutoff",
+                    "match_win_reward",
+                )
+            },
+        ),
         ("Betting", {"fields": ("betting_enabled", "min_bet", "max_bet", "bet_payout_multiplier")}),
         (
             "Schedule",

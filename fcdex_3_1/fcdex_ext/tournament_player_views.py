@@ -55,11 +55,14 @@ async def build_overview_sections(tournament: Tournament, viewer_id: int | None 
         if len(tournament.rules) > 500
         else (tournament.rules or "*No rules posted yet.*")
     )
+    max_participants_text = "unlimited" if not tournament.max_participants else f"{tournament.max_participants:,}"
+    total_count = legacy_count + main_count
+    slots_text = f"**{total_count}/{max_participants_text}**" if tournament.max_participants else f"**{total_count}**"
     return [
         f"**Status** · {tournament.get_status_display()}\n"
         f"**Host** · <@{host_discord_id}>\n"
         f"**Registration** · {registration_note}\n"
-        f"**Legacy** · {legacy_count} players · **Main** · {main_count} players\n"
+        f"**Players** · {slots_text} · Legacy **{legacy_count}** · Main **{main_count}\n"
         f"**Semifinal cutoff** · `{tournament.semifinal_cutoff}` pts\n"
         f"**Betting** · {'on' if tournament.betting_enabled else 'off'}"
         + (
@@ -118,8 +121,20 @@ class TournamentJoinSelect(discord.ui.Select):
             await interaction.response.send_message(reason, ephemeral=True)
             return
 
-        group = self.values[0]
         player, _ = await Player.objects.aget_or_create(discord_id=interaction.user.id)
+        already_registered = await TournamentRegistration.objects.filter(
+            tournament=tournament, player=player
+        ).aexists()
+        if not already_registered and tournament.max_participants:
+            total = await TournamentRegistration.objects.filter(tournament=tournament).acount()
+            if total >= tournament.max_participants:
+                await interaction.response.send_message(
+                    f"❌ This tournament is full (**{tournament.max_participants}** player slots).",
+                    ephemeral=True,
+                )
+                return
+
+        group = self.values[0]
         registration, created = await TournamentRegistration.objects.aget_or_create(
             tournament=tournament, player=player, defaults={"group": group}
         )

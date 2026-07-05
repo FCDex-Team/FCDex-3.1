@@ -103,6 +103,9 @@ class Tournament(models.Model):
     bet_payout_multiplier = models.PositiveSmallIntegerField(
         default=2, help_text="Multiplier applied to winning bets (e.g. 2 = double your wager)."
     )
+    max_participants = models.PositiveIntegerField(
+        default=0, blank=True, help_text="Maximum total players across both groups. 0 = unlimited."
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     scheduled_start_at = models.DateTimeField(
         null=True,

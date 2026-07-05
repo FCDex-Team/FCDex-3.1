@@ -72,9 +72,15 @@ class TournamentCog(commands.GroupCog, group_name="tournament"):
         )
         await interaction.response.send_message(view=layout)  # pyright: ignore[reportArgumentType]
 
-    @app_commands.command(name="start", description="Open group stage — create round-robin matches (Manage Server)")
-    @app_commands.checks.has_permissions(manage_guild=True)
+    @app_commands.command(name="start", description="Open group stage — create round-robin matches (host only)")
     async def start(self, interaction: discord.Interaction, tournament: TournamentTransform):
+        from fcdex_3_1.fcdex_ext.tournament_host import viewer_is_host
+
+        if not await viewer_is_host(interaction, tournament):
+            await interaction.response.send_message(
+                "Only the tournament **host** can start the group stage.", ephemeral=True
+            )
+            return
         eligible, reason = await tournament_start_eligibility(tournament)
         if not eligible:
             await interaction.response.send_message(reason or "Cannot start this tournament.", ephemeral=True)

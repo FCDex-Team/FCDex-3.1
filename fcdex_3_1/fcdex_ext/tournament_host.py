@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 import discord
 from discord.ui import ActionRow, Button, button
 
+from bd_models.models import Player
 from fcdex_3_1.fcdex_ext.tournament_pairings import planned_group_stage_match_count
 from fcdex_3_1.fcdex_ext.tournament_schedule import start_blocked_reason
 from fcdex_3_1.models import Tournament, TournamentGroup, TournamentRegistration, TournamentStatus
@@ -55,15 +56,20 @@ def viewer_has_manage_guild(interaction: Interaction) -> bool:
     return bool(interaction.user.guild_permissions.manage_guild)
 
 
+async def viewer_is_host(interaction: Interaction, tournament: Tournament) -> bool:
+    host_discord_id = await Player.objects.values_list("discord_id", flat=True).aget(pk=tournament.host_id)
+    return interaction.user.id == host_discord_id
+
+
 async def viewer_can_start_group_stage(interaction: Interaction, tournament: Tournament) -> bool:
-    if not viewer_has_manage_guild(interaction):
+    if not await viewer_is_host(interaction, tournament):
         return False
     eligible, _ = await tournament_start_eligibility(tournament)
     return eligible
 
 
 class TournamentStartGroupRow(ActionRow):
-    """Start group stage from player or match hub (requires Manage Server)."""
+    """Start group stage from player or match hub (host only)."""
 
     def __init__(self, owner_id: int, tournament_id: int, *, refresh: str):
         super().__init__()
@@ -76,9 +82,10 @@ class TournamentStartGroupRow(ActionRow):
         if interaction.user.id != self.owner_id:
             await interaction.response.send_message("This menu is for the player who opened it.", ephemeral=True)
             return
-        if not viewer_has_manage_guild(interaction):
+        tournament = await Tournament.objects.aget(pk=self.tournament_id)
+        if not await viewer_is_host(interaction, tournament):
             await interaction.response.send_message(
-                "You need **Manage Server** to start the group stage.", ephemeral=True
+                "Only the tournament **host** can start the group stage.", ephemeral=True
             )
             return
 

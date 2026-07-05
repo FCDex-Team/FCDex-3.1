@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
 log = logging.getLogger("fcdex_3_1.tournament.views")
 
-ManageMode = Literal["edit", "delete", "announce", "host"]
+ManageMode = Literal["edit", "delete", "announce", "host", "settings"]
 
 
 async def load_manageable_tournaments() -> list[Tournament]:
@@ -68,6 +68,7 @@ class TournamentManageView(LayoutView):
             "-# Private · only you can see this\n\n"
             "▸ **Create** — full tournament setup\n"
             "▸ **Edit** — description, schedule, cutoff, status\n"
+            "▸ **Settings** — max participants, betting, rules\n"
             "▸ **Host** — start group stage or advance rounds\n"
             "▸ **Bounty vault** — loot pools, rules, and betting\n"
             "▸ **Rewards** — participation prizes for match participants\n"
@@ -155,6 +156,18 @@ class TournamentManageExtraRow(ActionRow):
         super().__init__()
         self.owner_id = owner_id
 
+    @button(label="Settings", style=discord.ButtonStyle.primary, emoji="⚙️")
+    async def settings_button(self, interaction: Interaction, button: Button):
+        if _owner_mismatch(interaction, self.owner_id):
+            await _deny_owner(interaction)
+            return
+        tournaments = await load_manageable_tournaments()
+        if not tournaments:
+            await interaction.response.send_message("No tournaments exist yet.", ephemeral=True)
+            return
+        view = TournamentPickView(self.owner_id, cast(ManageMode, "settings"), tournaments)
+        await interaction.response.edit_message(view=view)
+
     @button(label="Bounty vault", style=discord.ButtonStyle.secondary, emoji="🎁")
     async def bounty_button(self, interaction: Interaction, button: Button):
         if _owner_mismatch(interaction, self.owner_id):
@@ -198,6 +211,7 @@ class TournamentPickView(LayoutView):
             "delete": "🗑️ Delete tournament",
             "announce": "📢 Post announcement",
             "host": "🎮 Host controls",
+            "settings": "⚙️ Tournament settings",
         }
         container.add_item(TextDisplay(f"# {titles[self.mode]}\n-# Select a tournament below"))
         container.add_item(Separator())
@@ -241,6 +255,10 @@ class TournamentSelect(discord.ui.Select):
 
         if self.mode == "edit":
             await interaction.response.send_modal(TournamentEditModal(self.owner_id, tournament))
+            return
+
+        if self.mode == "settings":
+            await interaction.response.send_modal(TournamentSettingsModal(self.owner_id, tournament))
             return
 
         if self.mode == "delete":
@@ -470,6 +488,43 @@ class TournamentEditModal(Modal, title="Edit tournament"):
         await interaction.response.edit_message(view=view)
 
 
+class TournamentSettingsModal(Modal, title="Tournament settings"):
+    max_participants = TextInput(
+        label="Max participants (0 = unlimited)",
+        required=True,
+        max_length=6,
+        default="0",
+    )
+
+    def __init__(self, owner_id: int, tournament: Tournament):
+        super().__init__()
+        self.owner_id = owner_id
+        self.tournament_id = tournament.pk
+        self.max_participants.default = str(tournament.max_participants or 0)
+
+    async def on_submit(self, interaction: Interaction) -> None:
+        if _owner_mismatch(interaction, self.owner_id):
+            await _deny_owner(interaction)
+            return
+
+        tournament = await Tournament.objects.aget(pk=self.tournament_id)
+        try:
+            max_participants = int(self.max_participants.value.strip() or "0")
+            if max_participants < 0:
+                raise ValueError
+        except ValueError:
+            await interaction.response.send_message("Max participants must be 0 or a positive number.", ephemeral=True)
+            return
+
+        tournament.max_participants = max_participants
+        await tournament.asave(update_fields=("max_participants",))
+
+        cap_text = "unlimited" if max_participants == 0 else f"{max_participants:,}"
+        notice = f"✅ Updated **{tournament.name}** · max participants: **{cap_text}**."
+        view = TournamentManageView(self.owner_id, notice=notice)
+        await interaction.response.edit_message(view=view)
+
+
 async def post_tournament_announcement(interaction: Interaction, tournament: Tournament) -> None:
     channel = interaction.channel
     if not isinstance(channel, discord.abc.Messageable):
@@ -477,9 +532,11 @@ async def post_tournament_announcement(interaction: Interaction, tournament: Tou
 
     host_discord_id = await Player.objects.values_list("discord_id", flat=True).aget(pk=tournament.host_id)
     schedule_lines = schedule_summary_lines(tournament)
+    cap_text = "unlimited" if not tournament.max_participants else f"{tournament.max_participants:,}"
     sections = [
         f"**Status:** {tournament.get_status_display()}\n"
         f"**Host:** <@{host_discord_id}>\n"
+        f"**Max participants:** {cap_text}\n"
         f"**Semifinal cutoff:** {tournament.semifinal_cutoff} points\n"
         f"**Betting:** {'enabled' if tournament.betting_enabled else 'disabled'}\n"
         + ("\n".join(schedule_lines) + "\n" if schedule_lines else "")
@@ -507,7 +564,7 @@ class TournamentHostView(LayoutView):
                 truncate_text(
                     f"# 🎮 Host · **{self.tournament_name}**\n"
                     f"-# Status: `{self.status}`\n\n"
-                    "▸ **Start** — open group stage (≥2 players in a group; also `/tournament start`)\n"
+                    "▸ **Start** — open group stage (host only; ≥2 players in a group; also `/tournament start`)\n"
                     "▸ **Advance** — move to semifinals, finals, or complete\n"
                     "▸ **Sync bracket** — repair missing semifinal/final pairings"
                 )
@@ -536,14 +593,20 @@ class TournamentHostControls(ActionRow):
         if _owner_mismatch(interaction, self.owner_id):
             await _deny_owner(interaction)
             return
-        if not _require_manage_guild(interaction):
-            await _deny_manage_guild(interaction)
+
+        from fcdex_3_1.fcdex_ext.tournament_host import viewer_is_host
+
+        tournament = await Tournament.objects.aget(pk=self.tournament_id)
+        if not await viewer_is_host(interaction, tournament):
+            await interaction.response.send_message(
+                "Only the tournament **host** can start the group stage.", ephemeral=True
+            )
             return
+
         from fcdex_3_1.fcdex_ext.tournament_cog import run_tournament_start
         from fcdex_3_1.fcdex_ext.tournament_host import registration_counts_by_group
         from fcdex_3_1.fcdex_ext.tournament_pairings import planned_group_stage_match_count
 
-        tournament = await Tournament.objects.aget(pk=self.tournament_id)
         if error := await run_tournament_start(tournament):
             await interaction.response.send_message(error, ephemeral=True)
             return
