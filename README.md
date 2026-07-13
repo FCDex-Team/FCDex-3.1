@@ -83,7 +83,7 @@ All admin panels use Components v2 and reply **ephemeral**.
 
 ```toml
 [[ballsdex.packages]]
-location = "git+https://github.com/FCDex-Team/FCDex-3.1.git@3.0.4"
+location = "git+https://github.com/FCDex-Team/FCDex-3.1.git@3.1.0"
 path = "fcdex_3_1"
 enabled = true
 ```
@@ -94,7 +94,7 @@ docker compose build && docker compose up -d
 
 ### Upgrading
 
-- Set `path = "fcdex_3_1"` and pin the latest tag (e.g. **`@3.0.4`**).
+- Set `path = "fcdex_3_1"` and pin the latest tag (e.g. **`@3.1.0`**).
 - Run migrations through **`0011`** (configurable daily quests).
 - Django app **label stays `fcdex_3_0`** for database compatibility.
 - Enable economy: admin **Settings** → set **`currency_name`** (e.g. `coin`).

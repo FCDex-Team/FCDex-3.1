@@ -489,12 +489,7 @@ class TournamentEditModal(Modal, title="Edit tournament"):
 
 
 class TournamentSettingsModal(Modal, title="Tournament settings"):
-    max_participants = TextInput(
-        label="Max participants (0 = unlimited)",
-        required=True,
-        max_length=6,
-        default="0",
-    )
+    max_participants = TextInput(label="Max participants (0 = unlimited)", required=True, max_length=6, default="0")
 
     def __init__(self, owner_id: int, tournament: Tournament):
         super().__init__()

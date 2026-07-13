@@ -11,5 +11,5 @@ class Migration(migrations.Migration):
             field=models.PositiveIntegerField(
                 default=0, help_text="Maximum total players across both groups. 0 = unlimited."
             ),
-        ),
+        )
     ]

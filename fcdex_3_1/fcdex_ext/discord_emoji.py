@@ -8,10 +8,7 @@ _CUSTOM_EMOJI_RE = re.compile(r"^<(?P<animated>a)?:(?P<name>[a-zA-Z0-9_]+):(?P<i
 
 def _is_emoji_codepoint(code: int) -> bool:
     return (
-        0x1F1E6 <= code <= 0x1F1FF
-        or 0x1F300 <= code <= 0x1FAFF
-        or 0x2600 <= code <= 0x27BF
-        or 0x2300 <= code <= 0x23FF
+        0x1F1E6 <= code <= 0x1F1FF or 0x1F300 <= code <= 0x1FAFF or 0x2600 <= code <= 0x27BF or 0x2300 <= code <= 0x23FF
     )
 
 
@@ -48,11 +45,7 @@ def _has_multiple_emoji(text: str) -> bool:
     """True when *text* contains more than one distinct emoji (flags and ZWJ chains count as one)."""
     if "\u200d" in text:
         return False
-    codes = [
-        ord(ch)
-        for ch in text
-        if ch not in "\u20e3\ufe0f" and unicodedata.category(ch) not in ("Mn", "Me")
-    ]
+    codes = [ord(ch) for ch in text if ch not in "\u20e3\ufe0f" and unicodedata.category(ch) not in ("Mn", "Me")]
     if not codes:
         return False
     regional = [c for c in codes if 0x1F1E6 <= c <= 0x1F1FF]

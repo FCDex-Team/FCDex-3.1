@@ -54,8 +54,8 @@ async def build_progress_body(owner_id: int) -> tuple[str, str]:
     await check_achievements(player)
 
     lines: list[str] = []
-    async for player_achievement in (
-        PlayerAchievement.objects.filter(player=player).select_related("achievement", "achievement__reward_ball")
+    async for player_achievement in PlayerAchievement.objects.filter(player=player).select_related(
+        "achievement", "achievement__reward_ball"
     ):
         ach = player_achievement.achievement
         status = (

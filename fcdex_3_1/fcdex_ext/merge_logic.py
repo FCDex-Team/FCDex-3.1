@@ -183,9 +183,7 @@ async def validate_merge_batch(player: Player, instances: list[BallInstance]) ->
 
         if input_level == 0:
             if instance.special_id is not None:
-                raise MergeValidationError(
-                    "Forge L1 only accepts plain common/uncommon clubballs without any special."
-                )
+                raise MergeValidationError("Forge L1 only accepts plain common/uncommon clubballs without any special.")
             ball = await get_ball(instance)
             if not await is_valid_l1_base_ball(ball):
                 country = getattr(ball, "country", "This clubball")

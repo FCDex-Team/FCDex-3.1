@@ -122,15 +122,12 @@ class TournamentJoinSelect(discord.ui.Select):
             return
 
         player, _ = await Player.objects.aget_or_create(discord_id=interaction.user.id)
-        already_registered = await TournamentRegistration.objects.filter(
-            tournament=tournament, player=player
-        ).aexists()
+        already_registered = await TournamentRegistration.objects.filter(tournament=tournament, player=player).aexists()
         if not already_registered and tournament.max_participants:
             total = await TournamentRegistration.objects.filter(tournament=tournament).acount()
             if total >= tournament.max_participants:
                 await interaction.response.send_message(
-                    f"❌ This tournament is full (**{tournament.max_participants}** player slots).",
-                    ephemeral=True,
+                    f"❌ This tournament is full (**{tournament.max_participants}** player slots).", ephemeral=True
                 )
                 return
 
