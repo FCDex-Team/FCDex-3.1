@@ -7,6 +7,7 @@ import discord
 from discord.ui import ActionRow, Button, Container, Modal, Separator, TextDisplay, TextInput, button
 
 from ballsdex.core.discord import LayoutView
+from fcdex_3_1.fcdex_ext.tournament_config import cap_error, get_tournament_config
 from fcdex_3_1.fcdex_ext.tournament_views import (
     TournamentManageView,
     _deny_manage_guild,
@@ -497,6 +498,17 @@ class BountyConfigureModal(Modal, title="Rules & betting"):
                 update_fields.append("bet_payout_multiplier")
         except ValueError:
             await interaction.response.send_message("Check min/max bet and payout values.", ephemeral=True)
+            return
+
+        config = await get_tournament_config()
+        if error := cap_error(tournament.min_bet, config.min_bet_cap, "Min bet"):
+            await interaction.response.send_message(f"❌ {error}", ephemeral=True)
+            return
+        if error := cap_error(tournament.max_bet, config.max_bet_cap, "Max bet"):
+            await interaction.response.send_message(f"❌ {error}", ephemeral=True)
+            return
+        if error := cap_error(tournament.bet_payout_multiplier, config.bet_payout_multiplier_cap, "Payout multiplier"):
+            await interaction.response.send_message(f"❌ {error}", ephemeral=True)
             return
 
         if tournament.min_bet > tournament.max_bet:

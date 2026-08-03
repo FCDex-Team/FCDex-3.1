@@ -16,6 +16,7 @@ from .models import (
     ShopPurchase,
     Tournament,
     TournamentBet,
+    TournamentConfig,
     TournamentMatch,
     TournamentMatchPrize,
     TournamentParticipantRewardClaim,
@@ -231,3 +232,20 @@ class PlayerMergeQuotaAdmin(admin.ModelAdmin):
     autocomplete_fields = ("player",)
     search_fields = ("player__discord_id",)
     list_display = ("player", "premium_bonus", "cap_override")
+
+
+@admin.register(TournamentConfig)
+class TournamentConfigAdmin(admin.ModelAdmin):
+    list_display = (
+        "max_participants_cap",
+        "semifinal_cutoff_cap",
+        "min_bet_cap",
+        "max_bet_cap",
+        "bet_payout_multiplier_cap",
+    )
+
+    def has_add_permission(self, request):
+        return not TournamentConfig.objects.exists()
+
+    def has_delete_permission(self, request, obj=None):
+        return False

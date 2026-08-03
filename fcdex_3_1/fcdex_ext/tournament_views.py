@@ -8,6 +8,7 @@ from discord.ui import ActionRow, Button, Container, Modal, Separator, TextDispl
 
 from ballsdex.core.discord import LayoutView
 from bd_models.models import Player
+from fcdex_3_1.fcdex_ext.tournament_config import cap_error, get_tournament_config
 from fcdex_3_1.fcdex_ext.tournament_schedule import (
     format_for_input,
     parse_optional_datetime,
@@ -388,6 +389,11 @@ class TournamentCreateModal(Modal, title="Create tournament"):
             await interaction.response.send_message(message, ephemeral=True)
             return
 
+        config = await get_tournament_config()
+        if error := cap_error(semifinal_cutoff, config.semifinal_cutoff_cap, "Semifinal cutoff"):
+            await interaction.response.send_message(f"❌ {error}", ephemeral=True)
+            return
+
         if scheduled_start and scheduled_end and scheduled_start >= scheduled_end:
             await interaction.response.send_message("Scheduled start must be before scheduled end.", ephemeral=True)
             return
@@ -471,6 +477,11 @@ class TournamentEditModal(Modal, title="Edit tournament"):
             await interaction.response.send_message(str(exc), ephemeral=True)
             return
 
+        config = await get_tournament_config()
+        if error := cap_error(semifinal_cutoff, config.semifinal_cutoff_cap, "Semifinal cutoff"):
+            await interaction.response.send_message(f"❌ {error}", ephemeral=True)
+            return
+
         if scheduled_start and scheduled_end and scheduled_start >= scheduled_end:
             await interaction.response.send_message("Scheduled start must be before scheduled end.", ephemeral=True)
             return
@@ -509,6 +520,11 @@ class TournamentSettingsModal(Modal, title="Tournament settings"):
                 raise ValueError
         except ValueError:
             await interaction.response.send_message("Max participants must be 0 or a positive number.", ephemeral=True)
+            return
+
+        config = await get_tournament_config()
+        if error := cap_error(max_participants, config.max_participants_cap, "Max participants"):
+            await interaction.response.send_message(f"❌ {error}", ephemeral=True)
             return
 
         tournament.max_participants = max_participants

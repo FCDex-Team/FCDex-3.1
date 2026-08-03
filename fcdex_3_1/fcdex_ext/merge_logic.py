@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 import discord
 from django.db.models import Q
 
-from bd_models.models import Ball, BallInstance, Player, Special, balls, specials
+from bd_models.models import Ball, BallInstance, Player, Special, specials
 from fcdex_3_1.fcdex_ext.bd_helpers import format_instance, get_ball, instance_attack, instance_health
 from fcdex_3_1.fcdex_ext.merge_levels import (
     MAX_MERGE_LEVEL,
@@ -56,19 +56,9 @@ async def get_instance_merge_level(instance: BallInstance) -> int | None:
     return resolve_merge_level_from_bonuses(instance.attack_bonus, instance.health_bonus)
 
 
-async def l1_base_rarity_values() -> set[float]:
-    enabled = [entry for entry in balls.values() if entry.enabled]
-    if not enabled:
-        enabled = [ball async for ball in Ball.objects.filter(enabled=True)]
-    if not enabled:
-        return set()
-    rarity_tiers = sorted({entry.rarity for entry in enabled}, reverse=True)
-    return set(rarity_tiers[:2])
-
-
 async def is_valid_l1_base_ball(ball: Ball) -> bool:
-    allowed = await l1_base_rarity_values()
-    return ball.rarity in allowed
+    """Any enabled clubball is valid as an L1 base input, regardless of rarity."""
+    return bool(ball.enabled)
 
 
 async def is_valid_l1_forge_input(instance: BallInstance) -> bool:
@@ -138,7 +128,7 @@ async def _resolve_unanimous_input_level(instances: list[BallInstance]) -> int:
     unique_levels = set(input_levels)
     if len(unique_levels) != 1:
         raise MergeValidationError(
-            "All inputs must be the same forge tier — either all **common/uncommon** clubballs "
+            "All inputs must be the same forge tier — either all **plain (no-special)** clubballs "
             "or all the same **forge level** cards."
         )
     return input_levels[0]
@@ -183,14 +173,14 @@ async def validate_merge_batch(player: Player, instances: list[BallInstance]) ->
 
         if input_level == 0:
             if instance.special_id is not None:
-                raise MergeValidationError("Forge L1 only accepts plain common/uncommon clubballs without any special.")
+                raise MergeValidationError("Forge L1 only accepts plain clubballs without any special.")
             ball = await get_ball(instance)
             if not await is_valid_l1_base_ball(ball):
                 country = getattr(ball, "country", "This clubball")
                 emoji = get_merge_level_emoji(target_level)
                 raise MergeValidationError(
                     f"**{country}** can't be used for **{emoji} Forge L{target_level}** — "
-                    "only **common/uncommon** rarity clubballs (no special) count. "
+                    "only **enabled** clubballs (no special) count. "
                     "Pick a clubball that shows **Ready** in the dropdown."
                 )
 

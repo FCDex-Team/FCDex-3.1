@@ -158,7 +158,10 @@ async def _pick_pack_ball(*, rare_bias: bool = False) -> Ball | None:
     pool = await _resolve_ball_pool(rare_bias=rare_bias)
     if not pool:
         return None
-    return random.choice(pool)
+    weights = [ball.rarity for ball in pool]
+    if sum(weights) <= 0:
+        return random.choice(pool)
+    return random.choices(pool, weights=weights, k=1)[0]
 
 
 async def grant_random_clubball(

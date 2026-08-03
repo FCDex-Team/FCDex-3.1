@@ -16,7 +16,7 @@ def _preview_health(base_health: int, bonus: int) -> int:
 def test_merge_level_config_values():
     assert MERGE_LEVELS[1].input_count == 10
     assert MERGE_LEVELS[7].input_count == 2
-    assert MERGE_LEVELS[1].requires_common_inputs is True
+    assert MERGE_LEVELS[1].requires_common_inputs is False
     assert MERGE_LEVELS[2].requires_common_inputs is False
 
 
@@ -34,8 +34,8 @@ def test_preview_merge_stats_level_seven_is_much_stronger_than_level_one():
 
 def test_level_seven_bonus_values():
     cfg = get_merge_level_config(7)
-    assert cfg.attack_bonus == 210
-    assert cfg.health_bonus == 210
+    assert cfg.attack_bonus == 170
+    assert cfg.health_bonus == 170
 
 
 def test_format_merge_count_mismatch_for_commons():

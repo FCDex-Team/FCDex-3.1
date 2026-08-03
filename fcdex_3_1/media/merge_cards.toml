@@ -9,17 +9,17 @@ period_days = 7
 [[level]]
 level = 1
 input_count = 10
-attack_bonus = 15
-health_bonus = 15
-requires_common = true
+attack_bonus = 8
+health_bonus = 8
+requires_common = false
 ball_country = ""
 emoji = "🔨"
 
 [[level]]
 level = 2
 input_count = 9
-attack_bonus = 35
-health_bonus = 35
+attack_bonus = 20
+health_bonus = 20
 requires_common = false
 ball_country = ""
 emoji = "🔥"
@@ -27,8 +27,8 @@ emoji = "🔥"
 [[level]]
 level = 3
 input_count = 7
-attack_bonus = 60
-health_bonus = 60
+attack_bonus = 40
+health_bonus = 40
 requires_common = false
 ball_country = ""
 emoji = "💠"
@@ -36,8 +36,8 @@ emoji = "💠"
 [[level]]
 level = 4
 input_count = 5
-attack_bonus = 90
-health_bonus = 90
+attack_bonus = 65
+health_bonus = 65
 requires_common = false
 ball_country = ""
 emoji = "⭐"
@@ -45,8 +45,8 @@ emoji = "⭐"
 [[level]]
 level = 5
 input_count = 4
-attack_bonus = 125
-health_bonus = 125
+attack_bonus = 95
+health_bonus = 95
 requires_common = false
 ball_country = ""
 emoji = "🌟"
@@ -54,8 +54,8 @@ emoji = "🌟"
 [[level]]
 level = 6
 input_count = 3
-attack_bonus = 165
-health_bonus = 165
+attack_bonus = 130
+health_bonus = 130
 requires_common = false
 ball_country = ""
 emoji = "👑"
@@ -63,8 +63,8 @@ emoji = "👑"
 [[level]]
 level = 7
 input_count = 2
-attack_bonus = 210
-health_bonus = 210
+attack_bonus = 170
+health_bonus = 170
 requires_common = false
 ball_country = ""
 emoji = "🏆"

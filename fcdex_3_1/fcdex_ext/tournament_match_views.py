@@ -96,6 +96,47 @@ async def build_seeding_sections(tournament: Tournament) -> list[str]:
     return sections
 
 
+def _player_label(match: TournamentMatch | None, player_attr: str) -> str:
+    if match is None:
+        return "???"
+    player = getattr(match, player_attr)
+    if player is None:
+        return "**BYE**"
+    name = f"<@{player.discord_id}>"
+    if match.completed and match.winner_id:
+        if match.winner_id == player.pk:
+            return f"**{name}** ✓"
+        return f"~~{name}~~ ✗"
+    return name
+
+
+def _winner_label(match: TournamentMatch | None) -> str:
+    if match is None:
+        return "???"
+    if match.completed and match.winner_id and match.winner:
+        return f"**<@{match.winner.discord_id}>** ✓"
+    return "_pending_"
+
+
+def _build_knockout_ascii_tree(semifinals: list[TournamentMatch], final: TournamentMatch | None) -> str:
+    """Render semifinals → final as a text bracket."""
+    if len(semifinals) < 2:
+        return ""
+
+    sf1, sf2 = semifinals[0], semifinals[1]
+    lines = [
+        "**semifinal 1**",
+        f"{_player_label(sf1, 'player1')} vs {_player_label(sf1, 'player2')} → {_winner_label(sf1)}",
+        "",
+        "**semifinal 2**",
+        f"{_player_label(sf2, 'player1')} vs {_player_label(sf2, 'player2')} → {_winner_label(sf2)}",
+        "",
+        "**final**",
+        f"{_winner_label(sf1)} vs {_winner_label(sf2)} → {_winner_label(final)}",
+    ]
+    return "\n".join(lines)
+
+
 async def build_bracket_sections(tournament: Tournament) -> list[str]:
     if await TournamentMatch.objects.filter(tournament=tournament).acount() == 0:
         return await build_seeding_sections(tournament)
@@ -115,26 +156,20 @@ async def build_bracket_sections(tournament: Tournament) -> list[str]:
         lines = [format_match_line(m) for m in group_matches]
         sections.append(f"### 📋 {group.label} · Group stage\n" + "\n".join(lines))
 
-    for round_value, round_title in ((TournamentRound.SEMIFINAL, "Semifinals"), (TournamentRound.FINAL, "Grand final")):
-        knockout = [
-            m
-            async for m in TournamentMatch.objects.filter(tournament=tournament, round=round_value)
-            .select_related("player1", "player2", "winner")
-            .order_by("group", "pk")
-        ]
-        if not knockout:
-            continue
-        blocks: list[str] = []
-        for m in knockout:
-            if round_value == TournamentRound.FINAL:
-                tag = "**Legacy** vs **Main**"
-            elif m.group:
-                tag = f"`{_group_label(m.group)}`"
-            else:
-                tag = ""
-            prefix = f"**{round_title}** · {tag}\n" if tag else f"**{round_title}**\n"
-            blocks.append(prefix + format_match_line(m))
-        sections.append(f"### 🗂️ {round_title}\n\n" + "\n\n".join(blocks))
+    semifinals = [
+        m
+        async for m in TournamentMatch.objects.filter(tournament=tournament, round=TournamentRound.SEMIFINAL)
+        .select_related("player1", "player2", "winner")
+        .order_by("group", "pk")
+    ]
+    final = (
+        await TournamentMatch.objects.filter(tournament=tournament, round=TournamentRound.FINAL)
+        .select_related("player1", "player2", "winner")
+        .afirst()
+    )
+
+    if semifinals:
+        sections.append("### 🗂️ Knockout bracket\n" + _build_knockout_ascii_tree(semifinals, final))
 
     return sections or await build_seeding_sections(tournament)
 

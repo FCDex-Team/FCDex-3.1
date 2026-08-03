@@ -48,7 +48,7 @@ def format_merge_input_requirement(input_level: int, target_level: int) -> str:
     cfg = get_merge_level_config(target_level)
     target_tag = f"{get_merge_level_emoji(target_level)} **Forge L{target_level}**"
     if input_level == 0:
-        return f"Pick **{cfg.input_count}** common/uncommon clubballs of the **same clubball** for {target_tag}."
+        return f"Pick **{cfg.input_count}** plain (no-special) clubballs of the **same clubball** for {target_tag}."
     input_tag = f"{get_merge_level_emoji(input_level)} **L{input_level}**"
     return f"Pick **{cfg.input_count}** forge {input_tag} cards of the **same clubball** to create {target_tag}."
 
@@ -71,7 +71,7 @@ def format_level_table_row(level: int) -> str:
     cfg = MERGE_LEVELS[level]
     tier_emoji = get_merge_level_emoji(level)
     if cfg.requires_common_inputs:
-        inputs = f"{cfg.input_count}× common/uncommon"
+        inputs = f"{cfg.input_count}× plain (no-special)"
     else:
         inputs = f"{cfg.input_count}× {get_merge_level_emoji(level - 1)} L{level - 1}"
     ball_note = f" · **{cfg.ball_country}** only" if cfg.ball_country else ""

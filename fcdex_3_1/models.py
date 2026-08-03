@@ -291,6 +291,29 @@ class TournamentBet(models.Model):
         return f"Bet #{self.pk} · match {self.match_id} · {self.amount} coins"
 
 
+class TournamentConfig(models.Model):
+    """Singleton row (pk=1) for global tournament default caps."""
+
+    max_participants_cap = models.PositiveIntegerField(
+        default=0, help_text="Upper limit for tournament max_participants. 0 = unlimited."
+    )
+    semifinal_cutoff_cap = models.PositiveIntegerField(
+        default=0, help_text="Upper limit for tournament semifinal_cutoff. 0 = unlimited."
+    )
+    min_bet_cap = models.PositiveIntegerField(default=0, help_text="Upper limit for tournament min_bet. 0 = unlimited.")
+    max_bet_cap = models.PositiveIntegerField(default=0, help_text="Upper limit for tournament max_bet. 0 = unlimited.")
+    bet_payout_multiplier_cap = models.PositiveSmallIntegerField(
+        default=0, help_text="Upper limit for tournament bet_payout_multiplier. 0 = unlimited."
+    )
+
+    class Meta:
+        verbose_name = "Tournament config"
+        verbose_name_plural = "Tournament config"
+
+    def __str__(self) -> str:
+        return "Tournament config"
+
+
 class MergeLog(models.Model):
     player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name="merge_logs")
     player_id: int
