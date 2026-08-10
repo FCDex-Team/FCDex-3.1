@@ -26,7 +26,7 @@ class PackCog(commands.GroupCog, group_name="pack"):
 
     async def _open(self, interaction: discord.Interaction, pack_type: str) -> None:
         try:
-            await interaction.response.defer(ephemeral=True)
+            await interaction.response.defer()
         except discord.HTTPException as exc:
             log.warning("Pack defer failed for user %s: %s", interaction.user.id, exc)
             try:
@@ -42,12 +42,12 @@ class PackCog(commands.GroupCog, group_name="pack"):
             guild_id = interaction.guild_id if interaction.guild else None
             ok, result = await grant_player_pack(player, pack_type, guild_id=guild_id)
             if not ok:
-                await interaction.followup.send(str(result), ephemeral=True)
+                await interaction.followup.send(str(result))
                 return
 
             success: PackOpenSuccess = result  # type: ignore[assignment]
             layout, pack_files = build_pack_open_layout(pack_type=pack_type, body=success.message)
-            kwargs: dict = {"view": layout, "ephemeral": True}
+            kwargs: dict = {"view": layout}
             if pack_files:
                 kwargs["files"] = pack_files
             await interaction.followup.send(**kwargs)  # pyright: ignore[reportArgumentType]
@@ -64,7 +64,7 @@ class PackCog(commands.GroupCog, group_name="pack"):
             player, _ = await Player.objects.aget_or_create(discord_id=interaction.user.id)
             entries = await pack_status_entries(player)
             layout = build_pack_menu_layout(entries)
-            await interaction.response.send_message(view=layout, ephemeral=True)  # pyright: ignore[reportArgumentType]
+            await interaction.response.send_message(view=layout)  # pyright: ignore[reportArgumentType]
         except Exception as exc:
             log.exception("Pack menu failed for user %s", interaction.user.id)
             await interaction.response.send_message(

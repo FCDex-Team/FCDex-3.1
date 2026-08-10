@@ -62,13 +62,14 @@ class FcdexCog(commands.GroupCog, group_name="fcdex"):
                 "`/battle random` — instant random 5v5\n"
                 "`/battle all` — every clubball you own · `skip_commentary:true`",
                 "### 🏟️ Tournaments\n`/tournament view` · `/tournament start` · `/tournament match` · `/tournament bet`",
+                "### ⚽ Club match\n`/match challenge clubball:<name>` — try to win a rare clubball",
                 "### ✨ Merge · 🏅 Achievements · 📊 Rarity · 🏆 Leaderboard",
                 "### 📋 List regime\n`/fcdex list regime:<name>` — browse clubballs by regime",
                 "### 🛒 Shop\n`/fcdex shop` — buy bundles with coins",
                 "### 👑 Boss · 📜 Quests\n`/fcdex boss` — guild raid · `/fcdex quests` · `/fcdex quest claim`",
                 "### 🛡️ Admin\n`/fcdex admin` — shop, craft, quests, achievements, merge, boss, "
-                "**Announce**, owners (Manage Server · ephemeral)\n"
-                "`/broadcast dm` · `/broadcast server` — same broadcasts via slash (confirm · rate-limited)",
+                "owners (Manage Server · ephemeral)\n"
+                "-# Configure SBCs, achievements, quests & more in `/fcdex admin` · FCDex 3.1",
             ],
             footer="-# Configure SBCs, achievements, quests & more in `/fcdex admin` · FCDex 3.1",
         )
@@ -275,6 +276,7 @@ class FcdexCog(commands.GroupCog, group_name="fcdex"):
             await interaction.response.send_message(view=layout)  # pyright: ignore[reportArgumentType]
 
     @app_commands.command(name="shop", description="Browse coin shop bundles and purchase rewards")
-    async def shop(self, interaction: discord.Interaction):
+    @app_commands.describe(ephemeral="Show the shop only to you (default: public)")
+    async def shop(self, interaction: discord.Interaction, ephemeral: bool = False):
         layout = await build_shop_layout(interaction.user.id)
-        await interaction.response.send_message(view=layout)  # pyright: ignore[reportArgumentType]
+        await interaction.response.send_message(view=layout, ephemeral=ephemeral)  # pyright: ignore[reportArgumentType]

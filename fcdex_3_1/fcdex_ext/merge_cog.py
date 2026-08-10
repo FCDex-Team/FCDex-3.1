@@ -24,7 +24,7 @@ class MergeCog(commands.Cog):
     @app_commands.command(name="merge", description="Pick one clubball and forge it through the FCDex merge ladder")
     async def merge(self, interaction: discord.Interaction):
         try:
-            await interaction.response.defer(ephemeral=True)
+            await interaction.response.defer()
         except discord.HTTPException as exc:
             log.warning("Merge slash defer failed for user %s: %s", interaction.user.id, exc)
             try:

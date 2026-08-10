@@ -1,9 +1,42 @@
 from __future__ import annotations
 
+from enum import StrEnum
+
+import discord
 from django.utils import timezone
 
 from bd_models.models import Ball, BallInstance, Player
 from fcdex_3_1.models import Achievement, AchievementType, PlayerAchievement, PlayerStats
+
+
+class DMSendOutcome(StrEnum):
+    SENT = "sent"
+    FAILED = "failed"
+    DM_CLOSED = "dm_closed"
+
+
+DM_CLOSED_CODE = 50007
+
+
+def _classify_dm_error(exc: BaseException) -> DMSendOutcome:
+    if isinstance(exc, discord.Forbidden):
+        if getattr(exc, "code", None) == DM_CLOSED_CODE:
+            return DMSendOutcome.DM_CLOSED
+        if "cannot send messages to this user" in str(exc).lower():
+            return DMSendOutcome.DM_CLOSED
+    return DMSendOutcome.FAILED
+
+
+async def send_player_dm(bot: discord.Client, discord_id: int, message: str) -> DMSendOutcome:
+    """Send a DM to a player. Used by battle/tournament rewards — not for mass broadcasts."""
+    try:
+        user = bot.get_user(discord_id) or await bot.fetch_user(discord_id)
+        await user.send(message)
+        return DMSendOutcome.SENT
+    except discord.Forbidden as exc:
+        return _classify_dm_error(exc)
+    except (discord.NotFound, discord.HTTPException):
+        return DMSendOutcome.FAILED
 
 
 async def get_or_create_stats(player: Player) -> PlayerStats:

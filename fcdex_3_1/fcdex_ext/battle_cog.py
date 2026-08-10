@@ -135,7 +135,7 @@ class ActiveBattle:
             await bump_quest(loser_player, "battle_play")
 
             if self.tournament_match_id is not None:
-                from fcdex_3_1.fcdex_ext.broadcast_logic import DMSendOutcome
+                from fcdex_3_1.fcdex_ext.services import DMSendOutcome
                 from fcdex_3_1.fcdex_ext.tournament_match import (
                     apply_verified_battle_result,
                     notify_match_claim_rewards,

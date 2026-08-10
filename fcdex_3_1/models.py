@@ -20,6 +20,7 @@ class TournamentStatus(models.TextChoices):
 
 class TournamentRound(models.TextChoices):
     GROUP = "group", "Group"
+    QUARTERFINAL = "quarterfinal", "Quarterfinal"
     SEMIFINAL = "semifinal", "Semifinal"
     FINAL = "final", "Final"
 
@@ -387,9 +388,16 @@ class PackClaim(models.Model):
         return f"{self.player_id} · {self.pack_type}"
 
 
+class SBCRecipeType(models.TextChoices):
+    STANDARD = "standard", "Standard (ball → ball)"
+    CLUBBALL_TO_CUSTOM = "clubball_to_custom", "Clubball → Custom"
+    CUSTOM_TO_CARD = "custom_to_card", "Custom → Card"
+
+
 class SBCRecipe(models.Model):
     name = models.CharField(max_length=64, unique=True)
     description = models.TextField(blank=True, default="")
+    recipe_type = models.CharField(max_length=20, choices=SBCRecipeType.choices, default=SBCRecipeType.STANDARD)
     required_ball = models.ForeignKey(Ball, on_delete=models.CASCADE, related_name="sbc_requirements")
     required_ball_id: int
     required_count = models.PositiveSmallIntegerField(default=1)

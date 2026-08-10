@@ -8,7 +8,6 @@ from discord.ui import ActionRow, Button, Container, Modal, Separator, TextDispl
 from ballsdex.core.discord import LayoutView
 from bd_models.models import Ball
 from fcdex_3_1.fcdex_ext.achievement_admin_views import build_achievement_admin_layout
-from fcdex_3_1.fcdex_ext.announce_admin_views import AdminHubAnnounceRow
 from fcdex_3_1.fcdex_ext.bd_resolve import resolve_ball_for_lookup
 from fcdex_3_1.fcdex_ext.boss_views import build_boss_admin_layout
 from fcdex_3_1.fcdex_ext.craft_admin_views import build_craft_admin_layout
@@ -118,15 +117,13 @@ def build_admin_hub_layout(owner_id: int, guild_id: int | None, channel_id: int)
                 "-# **Merge** — global quota, premium bonus & per-player overrides.\n"
                 "-# **Packs** — grant **Exclusive Pack** (admin-only; daily/weekly are `/pack`).\n"
                 "-# **Boss** — start raids here or in any channel/DM.\n"
-                "-# **Tournament** — set global caps for `/tournament manage`.\n"
-                "-# **Announce** — DM players or broadcast to all servers (confirm before send)."
+                "-# **Tournament** — set global caps for `/tournament manage`."
             )
         )
     )
     container.add_item(Separator())
     container.add_item(AdminHubControls(owner_id))
     container.add_item(AdminHubControlsRow2(owner_id))
-    container.add_item(AdminHubAnnounceRow(owner_id))
     layout.add_item(container)
     return layout
 

@@ -10,7 +10,7 @@ from ballsdex.core.discord import LayoutView
 from fcdex_3_1.fcdex_ext.bd_resolve import resolve_ball_input
 from fcdex_3_1.fcdex_ext.interaction_context import AdminContext, admin_context
 from fcdex_3_1.fcdex_ext.views import AdminHubBackRow, truncate_text
-from fcdex_3_1.models import SBCRecipe
+from fcdex_3_1.models import SBCRecipe, SBCRecipeType
 
 if TYPE_CHECKING:
     from discord import Interaction
@@ -20,6 +20,12 @@ log = logging.getLogger("fcdex_3_1.craft.admin")
 
 class CreateSBCModal(Modal, title="New SBC recipe"):
     name = TextInput(label="Recipe name", max_length=64)
+    recipe_type = TextInput(
+        label="Recipe type",
+        default="standard",
+        max_length=20,
+        placeholder="standard, clubball_to_custom, custom_to_card",
+    )
     required_ball = TextInput(label="Required clubball", placeholder="PK or country name", max_length=128)
     required_count = TextInput(label="Required count", default="1", max_length=3)
     reward_ball = TextInput(label="Reward clubball", placeholder="PK or country name", max_length=128)
@@ -41,6 +47,12 @@ class CreateSBCModal(Modal, title="New SBC recipe"):
         except ValueError:
             await interaction.response.send_message("Invalid count or coin reward.", ephemeral=True)
             return
+        recipe_type = self.recipe_type.value.strip().lower()
+        if recipe_type not in SBCRecipeType.values:
+            await interaction.response.send_message(
+                f"Recipe type must be one of: {', '.join(SBCRecipeType.values)}.", ephemeral=True
+            )
+            return
         req_ball = await resolve_ball_input(self.required_ball.value)
         rew_ball = await resolve_ball_input(self.reward_ball.value)
         if req_ball is None or rew_ball is None:
@@ -53,6 +65,7 @@ class CreateSBCModal(Modal, title="New SBC recipe"):
         await SBCRecipe.objects.acreate(
             name=name,
             description="",
+            recipe_type=recipe_type,
             required_ball=req_ball,
             required_count=req_count,
             reward_ball=rew_ball,
@@ -107,8 +120,10 @@ async def build_craft_admin_layout(owner_id: int, ctx: AdminContext, *, notice: 
     recipes = [r async for r in SBCRecipe.objects.select_related("required_ball", "reward_ball").order_by("name")]
     lines: list[str] = []
     for recipe in recipes:
+        type_label = recipe.get_recipe_type_display()
         lines.append(
-            f"**{recipe.name}** — **{recipe.required_count}×** {recipe.required_ball.country} → "
+            f"**{recipe.name}** — **{type_label}**\n"
+            f"**{recipe.required_count}×** {recipe.required_ball.country} → "
             f"**{recipe.reward_ball.country}**"
             + (f" · **+{recipe.reward_money:,}** coins" if recipe.reward_money else "")
             + f"\n-# `#{recipe.pk}` · {'✅' if recipe.enabled else '🚫'}"

@@ -8,7 +8,7 @@ from discord.ui import ActionRow, Button, Container, Separator, TextDisplay, but
 
 from ballsdex.core.discord import LayoutView
 from bd_models.models import Player
-from fcdex_3_1.fcdex_ext.broadcast_logic import DMSendOutcome
+from fcdex_3_1.fcdex_ext.services import DMSendOutcome
 from fcdex_3_1.fcdex_ext.tournament_bracket import explain_no_matches
 from fcdex_3_1.fcdex_ext.tournament_loot import load_match_prizes
 from fcdex_3_1.fcdex_ext.tournament_match import claim_match_victory, list_pending_matches, notify_match_claim_rewards
@@ -29,6 +29,7 @@ log = logging.getLogger("fcdex_3_1.tournament.match_views")
 
 ROUND_LABELS = {
     TournamentRound.GROUP: "Group stage",
+    TournamentRound.QUARTERFINAL: "Quarterfinals",
     TournamentRound.SEMIFINAL: "Semifinals",
     TournamentRound.FINAL: "Finals",
 }
@@ -101,12 +102,12 @@ def _player_label(match: TournamentMatch | None, player_attr: str) -> str:
         return "???"
     player = getattr(match, player_attr)
     if player is None:
-        return "**BYE**"
+        return "BYE"
     name = f"<@{player.discord_id}>"
     if match.completed and match.winner_id:
         if match.winner_id == player.pk:
-            return f"**{name}** ✓"
-        return f"~~{name}~~ ✗"
+            return f"{name} ✓"
+        return f"{name} ✗"
     return name
 
 
@@ -114,25 +115,42 @@ def _winner_label(match: TournamentMatch | None) -> str:
     if match is None:
         return "???"
     if match.completed and match.winner_id and match.winner:
-        return f"**<@{match.winner.discord_id}>** ✓"
+        return f"<@{match.winner.discord_id}> ✓"
     return "_pending_"
 
 
+def _pad(text: str, width: int) -> str:
+    return text.ljust(width)[:width]
+
+
 def _build_knockout_ascii_tree(semifinals: list[TournamentMatch], final: TournamentMatch | None) -> str:
-    """Render semifinals → final as a text bracket."""
+    """Render semifinals → final as a monospace single-elimination bracket tree."""
     if len(semifinals) < 2:
         return ""
 
     sf1, sf2 = semifinals[0], semifinals[1]
+    sf1_p1 = _player_label(sf1, "player1")
+    sf1_p2 = _player_label(sf1, "player2")
+    sf2_p1 = _player_label(sf2, "player1")
+    sf2_p2 = _player_label(sf2, "player2")
+    sf1_w = _winner_label(sf1)
+    sf2_w = _winner_label(sf2)
+    champion = _winner_label(final)
+
+    width = max(len(x) for x in (sf1_p1, sf1_p2, sf2_p1, sf2_p2, sf1_w, sf2_w, champion)) + 1
+
     lines = [
-        "**semifinal 1**",
-        f"{_player_label(sf1, 'player1')} vs {_player_label(sf1, 'player2')} → {_winner_label(sf1)}",
-        "",
-        "**semifinal 2**",
-        f"{_player_label(sf2, 'player1')} vs {_player_label(sf2, 'player2')} → {_winner_label(sf2)}",
-        "",
-        "**final**",
-        f"{_winner_label(sf1)} vs {_winner_label(sf2)} → {_winner_label(final)}",
+        "```",
+        " semifinal 1",
+        f" {_pad(sf1_p1, width)} ──┐",
+        f" {' ' * width}    ├── {_pad(sf1_w, width)} ──┐",
+        f" {_pad(sf1_p2, width)} ──┘                    │",
+        f" {' ' * width}                          ├── {_pad(champion, width)}",
+        f" {_pad(sf2_p1, width)} ──┐                    │",
+        f" {' ' * width}    ├── {_pad(sf2_w, width)} ──┘",
+        f" {_pad(sf2_p2, width)} ──┘",
+        " semifinal 2",
+        "```",
     ]
     return "\n".join(lines)
 

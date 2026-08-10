@@ -7,6 +7,7 @@ import discord
 from discord.ui import ActionRow, Button, Container, Separator, TextDisplay, button
 
 from ballsdex.core.discord import LayoutView
+from bd_models.models import BallInstance
 from fcdex_3_1.fcdex_ext.rarity_data import RarityCategory, format_rarity_value
 from fcdex_3_1.fcdex_ext.rarity_logic import (
     balls_at_rarity,
@@ -15,7 +16,6 @@ from fcdex_3_1.fcdex_ext.rarity_logic import (
     build_specials_overview,
     count_catalog,
     fetch_all_balls,
-    format_ball_line,
     rarity_distribution,
 )
 from fcdex_3_1.fcdex_ext.views import truncate_text
@@ -145,8 +145,31 @@ async def build_rarity_menu(owner_id: int, *, mode: str = "overview", page: int 
 async def build_ball_rarity_layout(ball: Ball) -> LayoutView:
     layout = LayoutView(timeout=120)
     container = Container()
-    body = f"# 🔍 {ball.country}\n{format_ball_line(ball)}"
-    container.add_item(TextDisplay(truncate_text(body)))
+
+    regime_name = getattr(ball.regime, "name", None)
+    economy_name = getattr(ball.economy, "name", None) if ball.economy_id else None
+    tradeable = "✅ tradeable" if ball.tradeable else "🚫 untradeable"
+    spawnable = "✅ spawnable" if ball.enabled else "🚫 unspawnable"
+
+    owner_count = await BallInstance.objects.filter(ball=ball, deleted=False).acount()
+
+    lines = [
+        f"# 🔍 {ball.country}",
+        f"**r:{format_rarity_value(ball.rarity)}** · `{ball.attack}` ATK · `{ball.health}` HP",
+        f"-# {spawnable} · {tradeable} · owned by **{owner_count:,}** player(s)",
+    ]
+    if regime_name:
+        lines.append(f"🏟️ Regime: **{regime_name}**")
+    if economy_name:
+        lines.append(f"💰 Economy: **{economy_name}**")
+    if ball.capacity_name:
+        lines.append(f"⚡ Capacity: **{ball.capacity_name}** — {ball.capacity_description or 'No description'}")
+    if ball.catch_names:
+        aliases = [a.strip() for a in ball.catch_names.split(";") if a.strip()]
+        if aliases:
+            lines.append(f"📝 Catch aliases: {', '.join(aliases[:5])}")
+
+    container.add_item(TextDisplay(truncate_text("\n".join(lines))))
     layout.add_item(container)
     return layout
 
