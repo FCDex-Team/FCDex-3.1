@@ -34,7 +34,7 @@ fcdex_3_1 = ["media/*", "extra.toml", "media/merge_cards.toml"]
 dev = [
   "ruff>=0.14.1",
   "pyright>=1.1.406",
-  "django>=6.0",
+  "django>=6.0.7",
   "django-types",
   "pytest>=8.0",
   "discord.py>=2.4",
