@@ -73,6 +73,7 @@ async def _reward_hint(match: TournamentMatch) -> str:
 
 async def build_seeding_sections(tournament: Tournament) -> list[str]:
     sections: list[str] = []
+    preview_players: dict[str, list[Player]] = {}
     for group in TournamentGroup:
         regs = [
             r
@@ -83,6 +84,7 @@ async def build_seeding_sections(tournament: Tournament) -> list[str]:
         if not regs:
             sections.append(f"### 🛡️ {group.label} · Seeding\n*No players registered yet*")
             continue
+        preview_players[group.value] = [r.player for r in regs[:2]]
         lines = [
             f"`Seed {seed:02d}` <@{reg.player.discord_id}> · **{group.label}**" for seed, reg in enumerate(regs, 1)
         ]
@@ -94,6 +96,22 @@ async def build_seeding_sections(tournament: Tournament) -> list[str]:
         else:
             hint = "-# Group stage not started yet — waiting on the host."
         sections.append(f"### 🛡️ {group.label} · Seeding\n" + "\n".join(lines) + f"\n{hint}")
+
+    legacy = preview_players.get(TournamentGroup.LEGACY.value, [])
+    main = preview_players.get(TournamentGroup.MAIN.value, [])
+    if len(legacy) >= 2 and len(main) >= 2:
+        sections.append("### 🗂️ Bracket preview\n" + _build_preview_ascii_tree(legacy, main))
+    else:
+        missing: list[str] = []
+        if len(legacy) < 2:
+            missing.append(f"Legacy ({len(legacy)}/2)")
+        if len(main) < 2:
+            missing.append(f"Main ({len(main)}/2)")
+        sections.append(
+            f"### 🗂️ Bracket preview\n"
+            f"*Need at least 2 players in both groups before the knockout preview appears. "
+            f"Currently missing: {', '.join(missing)}.*"
+        )
     return sections
 
 
@@ -146,10 +164,41 @@ def _build_knockout_ascii_tree(semifinals: list[TournamentMatch], final: Tournam
         f" {' ' * width}    ├── {_pad(sf1_w, width)} ──┐",
         f" {_pad(sf1_p2, width)} ──┘                    │",
         f" {' ' * width}                          ├── {_pad(champion, width)}",
+        " semifinal 2",
         f" {_pad(sf2_p1, width)} ──┐                    │",
         f" {' ' * width}    ├── {_pad(sf2_w, width)} ──┘",
         f" {_pad(sf2_p2, width)} ──┘",
-        " semifinal 2",
+        "```",
+    ]
+    return "\n".join(lines)
+
+
+def _build_preview_ascii_tree(legacy_players: list[Player], main_players: list[Player]) -> str:
+    """Render projected semifinal/final tree from top-2 seeds in each group."""
+    if len(legacy_players) < 2 or len(main_players) < 2:
+        return ""
+
+    sf1_p1 = f"<@{legacy_players[0].discord_id}>"
+    sf1_p2 = f"<@{legacy_players[1].discord_id}>"
+    sf2_p1 = f"<@{main_players[0].discord_id}>"
+    sf2_p2 = f"<@{main_players[1].discord_id}>"
+    sf1_w = "???"
+    sf2_w = "???"
+    champion = "???"
+
+    width = max(len(x) for x in (sf1_p1, sf1_p2, sf2_p1, sf2_p2, sf1_w, sf2_w, champion)) + 1
+
+    lines = [
+        "```",
+        " semifinal 1 (Legacy)",
+        f" {_pad(sf1_p1, width)} ──┐",
+        f" {' ' * width}    ├── {_pad(sf1_w, width)} ──┐",
+        f" {_pad(sf1_p2, width)} ──┘                    │",
+        f" {' ' * width}                          ├── {_pad(champion, width)}",
+        " semifinal 2 (Main)",
+        f" {_pad(sf2_p1, width)} ──┐                    │",
+        f" {' ' * width}    ├── {_pad(sf2_w, width)} ──┘",
+        f" {_pad(sf2_p2, width)} ──┘",
         "```",
     ]
     return "\n".join(lines)
