@@ -4,7 +4,7 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-    dependencies = [("fcdex_3_1", "0017_tournament_round_quarterfinal")]
+    dependencies = [("fcdex_3_0", "0017_tournament_round_quarterfinal")]
 
     operations = [
         migrations.AddField(

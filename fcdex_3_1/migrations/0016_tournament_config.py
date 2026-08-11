@@ -4,7 +4,7 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-    dependencies = [("fcdex_3_1", "0015_tournament_max_participants")]
+    dependencies = [("fcdex_3_0", "0015_tournament_max_participants")]
 
     operations = [
         migrations.CreateModel(
