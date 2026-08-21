@@ -71,7 +71,7 @@ class PackCog(commands.GroupCog, group_name="pack"):
                 f"❌ Could not load pack status: **{type(exc).__name__}** — {str(exc)[:200]}", ephemeral=True
             )
 
-    @app_commands.command(name="daily", description="Open Daily Pack — 3 clubballs with stat rolls (24h cooldown)")
+    @app_commands.command(name="daily", description="Open Daily Pack — 3 clubballs with stat rolls (once per day)")
     async def daily(self, interaction: discord.Interaction):
         await self._open(interaction, PackType.DAILY)
 

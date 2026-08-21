@@ -72,11 +72,20 @@ async def last_pack_claim(player: Player, pack_type: str) -> PackClaim | None:
 def cooldown_remaining(last: PackClaim | None, pack_type: str) -> timedelta | None:
     if last is None:
         return None
+    now = timezone.now()
+    if pack_type == PackType.DAILY:
+        if last.claimed_at.date() == now.date():
+            # Reset at next UTC midnight
+            next_midnight = datetime.combine(
+                now.date() + timedelta(days=1), datetime.min.time(), tzinfo=timezone.get_current_timezone()
+            )
+            return next_midnight - now
+        return None
+
     if pack_type not in PACK_COOLDOWNS:
         return None
     delta = PACK_COOLDOWNS[PackType(pack_type)]
     ready_at = last.claimed_at + delta
-    now = timezone.now()
     if now >= ready_at:
         return None
     return ready_at - now

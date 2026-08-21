@@ -79,7 +79,7 @@ def build_pack_admin_layout(owner_id: int, guild_id: int | None, *, notice: str 
     container.add_item(
         discord.ui.TextDisplay(
             f"{header}\n"
-            "-# **Daily Pack** — `/pack daily` · 24h cooldown · 3 clubballs + coins + stat rolls.\n"
+            "-# **Daily Pack** — `/pack daily` · once per calendar day · 3 clubballs + coins + stat rolls.\n"
             "-# **Weekly Pack** — `/pack weekly` · 7d cooldown · 5 clubballs + coins + stat rolls.\n"
             "-# **Exclusive Pack** — admin-only · rare clubballs, high stat boosts, specials, big coins."
         )
