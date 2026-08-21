@@ -146,8 +146,18 @@ async def build_ball_rarity_layout(ball: Ball) -> LayoutView:
     layout = LayoutView(timeout=120)
     container = Container()
 
-    regime_name = getattr(ball.regime, "name", None)
-    economy_name = getattr(ball.economy, "name", None) if ball.economy_id else None
+    from bd_models.models import Economy, Regime
+
+    regime_name = None
+    if ball.regime_id:
+        regime = await Regime.objects.aget(pk=ball.regime_id)
+        regime_name = regime.name
+
+    economy_name = None
+    if ball.economy_id:
+        economy = await Economy.objects.aget(pk=ball.economy_id)
+        economy_name = economy.name
+
     tradeable = "✅ tradeable" if ball.tradeable else "🚫 untradeable"
     spawnable = "✅ spawnable" if ball.enabled else "🚫 unspawnable"
 
