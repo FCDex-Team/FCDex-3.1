@@ -116,7 +116,8 @@ def _format_ladder_row(level: int, counts: dict[int, int]) -> str:
     current_target = _current_target_level(counts)
 
     if level > open_level:
-        return f"🔒 {emoji} **L{level}** · locked until you forge {get_merge_level_emoji(level - 1)} **L{level - 1}**"
+        prev_tag = "plain copies" if level == 1 else f"{get_merge_level_emoji(level - 1)} **L{level - 1}**"
+        return f"🔒 {emoji} **L{level}** · locked until you forge {prev_tag}"
 
     if level == current_target:
         return (

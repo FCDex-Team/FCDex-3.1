@@ -40,8 +40,13 @@ def detect_target_level(card_count: int) -> int | None:
 
 
 def get_merge_level_emoji(level: int) -> str:
-    cfg = get_merge_level_config(level)
-    return cfg.emoji or "✨"
+    if level <= 0:
+        return "⚽"
+    try:
+        cfg = get_merge_level_config(level)
+        return cfg.emoji or "✨"
+    except ValueError:
+        return "✨"
 
 
 def format_merge_input_requirement(input_level: int, target_level: int) -> str:
