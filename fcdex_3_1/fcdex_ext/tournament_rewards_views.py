@@ -272,6 +272,9 @@ class TournamentRewardsGrantPickView(LayoutView):
         if _owner_mismatch(interaction, self.owner_id):
             await _deny_owner(interaction)
             return False
+        if not _require_manage_guild(interaction):
+            await _deny_manage_guild(interaction)
+            return False
         return True
 
 
@@ -331,6 +334,9 @@ class TournamentRewardsDeletePickView(LayoutView):
         if _owner_mismatch(interaction, self.owner_id):
             await _deny_owner(interaction)
             return False
+        if not _require_manage_guild(interaction):
+            await _deny_manage_guild(interaction)
+            return False
         return True
 
 
@@ -370,6 +376,9 @@ class ParticipationRewardCreateModal(Modal, title="Create participation reward")
     async def on_submit(self, interaction: Interaction) -> None:
         if _owner_mismatch(interaction, self.owner_id):
             await _deny_owner(interaction)
+            return
+        if not _require_manage_guild(interaction):
+            await _deny_manage_guild(interaction)
             return
         try:
             prize_type = parse_participation_prize_type(self.prize_type.value)

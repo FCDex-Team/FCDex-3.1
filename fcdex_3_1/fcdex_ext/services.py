@@ -114,6 +114,12 @@ async def claim_achievement(player: Player, achievement: Achievement) -> tuple[b
     if player_achievement.claimed_at:
         return False, "You already claimed this achievement."
 
+    locked = await PlayerAchievement.objects.filter(pk=player_achievement.pk, claimed_at__isnull=True).aupdate(
+        claimed_at=timezone.now()
+    )
+    if not locked:
+        return False, "You already claimed this achievement."
+
     if achievement.reward_money:
         await player.add_money(achievement.reward_money)
 
@@ -121,9 +127,6 @@ async def claim_achievement(player: Player, achievement: Achievement) -> tuple[b
         await BallInstance.objects.acreate(
             ball_id=achievement.reward_ball_id, player=player, attack_bonus=0, health_bonus=0
         )
-
-    player_achievement.claimed_at = timezone.now()
-    await player_achievement.asave(update_fields=("claimed_at",))
 
     rewards: list[str] = []
     if achievement.reward_money:

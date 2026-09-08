@@ -63,6 +63,7 @@ class PackOpenSuccess:
     instances: tuple[BallInstance, ...]
     balls: tuple[Ball, ...]
     reward_lines: tuple[PackRewardLine, ...] = ()
+    coins: int = 0
 
 
 async def last_pack_claim(player: Player, pack_type: str) -> PackClaim | None:
@@ -343,6 +344,7 @@ async def _grant_pack_rewards(
         instances=tuple(granted_instances),
         balls=tuple(granted_balls),
         reward_lines=tuple(reward_lines),
+        coins=coins,
     )
 
 
@@ -362,7 +364,28 @@ async def grant_player_pack(
     success = await _grant_pack_rewards(
         player, pack_type, guild_id=guild_id, rewards=PACK_REWARDS[pack_enum], rare_bias=False, special_chance=0.0
     )
-    await PackClaim.objects.acreate(player=player, pack_type=pack_type)
+    claim = await PackClaim.objects.acreate(player=player, pack_type=pack_type)
+
+    # Guard against a concurrent claim that raced past the cooldown check above: if an earlier
+    # claim for this pack_type still puts us inside the cooldown window, we lost the race —
+    # undo the rewards we just granted instead of handing out a duplicate pack.
+    prior = await PackClaim.objects.filter(player=player, pack_type=pack_type).exclude(pk=claim.pk).afirst()
+    if prior is not None and cooldown_remaining(prior, pack_type) is not None:
+        await claim.adelete()
+        if success.instances:
+            await BallInstance.objects.filter(pk__in=[i.pk for i in success.instances]).adelete()
+        if success.coins:
+            try:
+                await player.remove_money(success.coins)
+            except ValueError:
+                log.warning(
+                    "Could not refund %s coins to player %s after lost pack claim race.", success.coins, player.pk
+                )
+        return (
+            False,
+            f"**{PACK_TYPE_LABELS[pack_type]}** is on cooldown — try again later (lost a race with another claim).",
+        )
+
     if pack_type == PackType.DAILY:
         from fcdex_3_1.fcdex_ext.quest_logic import bump_quest
 

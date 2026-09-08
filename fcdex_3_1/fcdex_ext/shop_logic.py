@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+import logging
+
 from bd_models.models import BallInstance, Player
 from fcdex_3_1.models import ShopBundle, ShopBundleItem, ShopPurchase
+
+log = logging.getLogger("fcdex_3_1.shop")
 
 
 async def list_shop_bundles(*, enabled_only: bool = True) -> list[ShopBundle]:
@@ -39,18 +43,31 @@ async def purchase_bundle(player: Player, bundle_id: int, *, guild_id: int | Non
     if not player.can_afford(bundle.price):
         return False, f"You need **{bundle.price:,}** coins (balance: **{player.money:,}**)."
 
-    await player.remove_money(bundle.price)
+    try:
+        await player.remove_money(bundle.price)
+    except ValueError:
+        return False, f"You need **{bundle.price:,}** coins (balance: **{player.money:,}**)."
 
     granted: list[str] = []
-    for item in items:
-        for _ in range(item.quantity):
-            await BallInstance.objects.acreate(
-                ball=item.ball, player=player, attack_bonus=0, health_bonus=0, server_id=guild_id, special=item.special
-            )
-        tag = f" ({item.special.name})" if item.special_id else ""
-        granted.append(f"**{item.quantity}×** {item.ball.country}{tag}")
+    try:
+        for item in items:
+            for _ in range(item.quantity):
+                await BallInstance.objects.acreate(
+                    ball=item.ball,
+                    player=player,
+                    attack_bonus=0,
+                    health_bonus=0,
+                    server_id=guild_id,
+                    special=item.special,
+                )
+            tag = f" ({item.special.name})" if item.special_id else ""
+            granted.append(f"**{item.quantity}×** {item.ball.country}{tag}")
+        await ShopPurchase.objects.acreate(player=player, bundle=bundle)
+    except Exception:
+        log.exception("Shop purchase delivery failed for player %s bundle %s — refunding.", player.pk, bundle.pk)
+        await player.add_money(bundle.price)
+        return False, "Purchase failed while delivering items — your coins were refunded."
 
-    await ShopPurchase.objects.acreate(player=player, bundle=bundle)
     player = await Player.objects.aget(pk=player.pk)
     return True, (
         f"Purchased **{bundle.name}** for **{bundle.price:,}** coins!\n"

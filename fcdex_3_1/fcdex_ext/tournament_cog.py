@@ -173,9 +173,13 @@ async def run_tournament_start(tournament: Tournament) -> str | None:
     if not pairings:
         return "Need at least 2 players in the same group (Legacy or Main) to create matches."
 
-    tournament.status = TournamentStatus.GROUP_STAGE
-    tournament.started_at = timezone.now()
-    await tournament.asave(update_fields=("status", "started_at"))
+    # Atomic guard: only flip REGISTRATION -> GROUP_STAGE once. If a concurrent "Start" click
+    # already won this, bail out before creating a duplicate set of matches.
+    started = await Tournament.objects.filter(pk=tournament.pk, status=TournamentStatus.REGISTRATION).aupdate(
+        status=TournamentStatus.GROUP_STAGE, started_at=timezone.now()
+    )
+    if not started:
+        return "This tournament has already started."
 
     for group_value, p1, p2 in pairings:
         await TournamentMatch.objects.acreate(
@@ -185,7 +189,10 @@ async def run_tournament_start(tournament: Tournament) -> str | None:
 
 
 async def run_tournament_advance(tournament: Tournament) -> tuple[bool, str]:
-    if reason := past_end_reason(tournament):
+    # A lapsed scheduled_end should stop a tournament from *starting* late (see
+    # tournament_start_eligibility, which already checks this), but must not deadlock a
+    # tournament that's already mid-bracket — it still needs to be able to finish.
+    if tournament.status == TournamentStatus.REGISTRATION and (reason := past_end_reason(tournament)):
         return False, reason
 
     if tournament.status == TournamentStatus.GROUP_STAGE:

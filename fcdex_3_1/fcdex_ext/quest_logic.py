@@ -113,11 +113,15 @@ async def claim_quest(player: Player, quest_key: str) -> tuple[bool, str]:
     if row.claimed_at:
         return False, "Already claimed today."
 
+    locked = await PlayerQuestProgress.objects.filter(pk=row.pk, claimed_at__isnull=True).aupdate(
+        claimed_at=timezone.now()
+    )
+    if not locked:
+        return False, "Already claimed today."
+
     spec = await get_quest_spec(quest_key)
     reward = spec.reward_coins if spec else 0
     label = spec.label if spec else quest_key
     if reward:
         await player.add_money(reward)
-    row.claimed_at = timezone.now()
-    await row.asave(update_fields=("claimed_at",))
     return True, f"Claimed **{label}** — **+{reward:,}** coins!"

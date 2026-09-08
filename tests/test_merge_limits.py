@@ -215,7 +215,7 @@ def _load_merge_logic_for_validation_tests():
     bd_helpers = _BdHelpersStub("fcdex_3_1.fcdex_ext.bd_helpers")
     bd_helpers.format_instance = AsyncMock(return_value="label")
     bd_helpers.get_ball = AsyncMock(
-        return_value=SimpleNamespace(pk=1, rarity=10, attack=100, health=80, country="Test Club")
+        return_value=SimpleNamespace(pk=1, rarity=10, enabled=True, attack=100, health=80, country="Test Club")
     )
     bd_helpers.instance_attack = lambda instance, ball: ball.attack
     bd_helpers.instance_health = lambda instance, ball: ball.health

@@ -14,6 +14,8 @@ async def place_bet(
     match = await TournamentMatch.objects.aget(pk=match.pk)
     if match.completed:
         return False, "This match is already finished."
+    if match.verified_winner_id is not None:
+        return False, "This match's battle result is already known — betting is closed."
     if picked.pk not in (match.player1_id, match.player2_id):
         return False, "You can only bet on a match participant."
     if bettor.pk in (match.player1_id, match.player2_id):

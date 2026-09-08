@@ -270,6 +270,9 @@ class TournamentBountyDropView(LayoutView):
         if _owner_mismatch(interaction, self.owner_id):
             await _deny_owner(interaction)
             return False
+        if not _require_manage_guild(interaction):
+            await _deny_manage_guild(interaction)
+            return False
         return True
 
 
@@ -360,6 +363,9 @@ class BountyDropCoinsModal(Modal, title="Coin bounty"):
         if _owner_mismatch(interaction, self.owner_id):
             await _deny_owner(interaction)
             return
+        if not _require_manage_guild(interaction):
+            await _deny_manage_guild(interaction)
+            return
         try:
             amount = int(self.coins.value.strip())
             if amount <= 0:
@@ -393,6 +399,9 @@ class BountyStashModal(Modal, title="Stash round bounty"):
     async def on_submit(self, interaction: Interaction) -> None:
         if _owner_mismatch(interaction, self.owner_id):
             await _deny_owner(interaction)
+            return
+        if not _require_manage_guild(interaction):
+            await _deny_manage_guild(interaction)
             return
         round_raw = self.round.value.strip().lower()
         try:
@@ -468,6 +477,9 @@ class BountyConfigureModal(Modal, title="Rules & betting"):
     async def on_submit(self, interaction: Interaction) -> None:
         if _owner_mismatch(interaction, self.owner_id):
             await _deny_owner(interaction)
+            return
+        if not _require_manage_guild(interaction):
+            await _deny_manage_guild(interaction)
             return
 
         tournament = await Tournament.objects.aget(pk=self.tournament_id)

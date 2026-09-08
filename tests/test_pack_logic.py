@@ -95,7 +95,9 @@ def test_cooldown_remaining_after_recent_claim():
     last = SimpleNamespace(claimed_at=timezone.now())
     remaining = cooldown_remaining(last, PackType.DAILY)
     assert remaining is not None
-    assert remaining > timedelta(hours=23)
+    # Daily cooldown resets at the next UTC midnight, so remaining time shrinks toward 0 as the
+    # day goes on — assert it's a positive delta within 24h rather than an arbitrary large floor.
+    assert timedelta(0) < remaining <= timedelta(hours=24)
 
 
 def test_pack_status_summaries_lists_all_pack_types():

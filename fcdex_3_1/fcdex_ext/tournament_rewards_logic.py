@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from django.db import IntegrityError
+
 from bd_models.models import Player
 from fcdex_3_1.fcdex_ext.tournament_loot import grant_prize_entry
 from fcdex_3_1.models import (
@@ -105,10 +107,16 @@ async def grant_participation_reward_to_eligible(
 
     granted = 0
     async for player in Player.objects.filter(pk__in=eligible_ids):
+        # Claim the (tournament, player, reward) slot first via the unique constraint — this is
+        # the atomic lock. Only grant the prize if we actually won that slot, so two concurrent
+        # "Grant all eligible" calls can't both pay the same player for the same reward.
+        try:
+            await TournamentParticipantRewardClaim.objects.acreate(
+                tournament_id=reward.tournament_id, player=player, reward=reward
+            )
+        except IntegrityError:
+            continue
         await grant_prize_entry(player, reward, guild_id=guild_id)
-        await TournamentParticipantRewardClaim.objects.acreate(
-            tournament_id=reward.tournament_id, player=player, reward=reward
-        )
         granted += 1
 
     label = reward.label or reward.get_prize_type_display()

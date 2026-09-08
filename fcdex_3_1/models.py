@@ -388,6 +388,32 @@ class PackClaim(models.Model):
         return f"{self.player_id} · {self.pack_type}"
 
 
+class MatchClaim(models.Model):
+    player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name="match_claims")
+    player_id: int
+    played_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-played_at",)
+        indexes = [models.Index(fields=("player", "-played_at"))]
+
+    def __str__(self) -> str:
+        return f"{self.player_id} · match @ {self.played_at:%Y-%m-%d %H:%M}"
+
+
+class BattleRewardClaim(models.Model):
+    player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name="battle_reward_claims")
+    player_id: int
+    granted_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-granted_at",)
+        indexes = [models.Index(fields=("player", "-granted_at"))]
+
+    def __str__(self) -> str:
+        return f"{self.player_id} · battle reward @ {self.granted_at:%Y-%m-%d %H:%M}"
+
+
 class SBCRecipeType(models.TextChoices):
     STANDARD = "standard", "Standard (ball → ball)"
     CLUBBALL_TO_CUSTOM = "clubball_to_custom", "Clubball → Custom"

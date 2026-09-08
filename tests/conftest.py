@@ -138,6 +138,8 @@ class _ModelsStub(ModuleType):
         self.PlayerMergeQuota = object
         self.PackType = _PackType
         self.PackClaim = object
+        self.MatchClaim = object
+        self.BattleRewardClaim = object
         self.QuestDefinition = object
         self.QuestHook = _QuestHook
         self.PlayerQuestProgress = object

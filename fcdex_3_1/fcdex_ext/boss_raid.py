@@ -178,7 +178,11 @@ def _boss_strike(boss_ball: Ball, round_num: int) -> int:
 async def resolve_round(raid: BossRaid) -> str:
     if raid.phase != "pick":
         return "Nothing to resolve — start a round first."
-    boss_ball = await Ball.objects.aget(pk=raid.boss_ball_id)
+    try:
+        boss_ball = await Ball.objects.aget(pk=raid.boss_ball_id)
+    except Ball.DoesNotExist:
+        raid.phase = "ended"
+        return "The boss clubball no longer exists — raid cancelled."
     lines: list[str] = [f"### Round **{raid.round}/{MAX_ROUNDS}** results"]
     total = 0
     locked = 0
@@ -327,8 +331,14 @@ async def conclude_raid(raid: BossRaid, *, grant_reward: bool) -> RaidConcludeRe
     if winner_id and grant_reward:
         special = await ensure_boss_special()
         player = await Player.objects.filter(discord_id=winner_id).afirst()
-        reward_ball = await Ball.objects.aget(pk=raid.reward_ball_id_effective)
-        if player and special:
+        try:
+            reward_ball = await Ball.objects.aget(pk=raid.reward_ball_id_effective)
+        except Ball.DoesNotExist:
+            reward_ball = None
+        if reward_ball is None:
+            lines.append(f"\n🏆 Top damage: <@{winner_id}> (reward clubball no longer exists — could not grant).")
+            reward_line = f"🎁 Top damage: <@{winner_id}> (reward clubball missing — contact staff)."
+        elif player and special:
             await BallInstance.objects.acreate(
                 ball=reward_ball,
                 player=player,
@@ -353,9 +363,13 @@ async def conclude_raid(raid: BossRaid, *, grant_reward: bool) -> RaidConcludeRe
     else:
         lines.append("\nNo winner recorded.")
 
-    boss_ball = await Ball.objects.aget(pk=raid.boss_ball_id)
+    try:
+        boss_ball = await Ball.objects.aget(pk=raid.boss_ball_id)
+    except Ball.DoesNotExist:
+        boss_ball = None
+    boss_country = boss_ball.country if boss_ball is not None else "the boss"
     public_message = format_public_raid_results(
-        raid, boss_country=boss_ball.country, winner_id=winner_id, reward_line=reward_line
+        raid, boss_country=boss_country, winner_id=winner_id, reward_line=reward_line
     )
     channel_id = raid.channel_id
     announce_publicly = raid.reward_server_id is not None

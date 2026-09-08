@@ -122,16 +122,10 @@ class TournamentJoinSelect(discord.ui.Select):
             return
 
         player, _ = await Player.objects.aget_or_create(discord_id=interaction.user.id)
-        already_registered = await TournamentRegistration.objects.filter(tournament=tournament, player=player).aexists()
-        if not already_registered and tournament.max_participants:
-            total = await TournamentRegistration.objects.filter(tournament=tournament).acount()
-            if total >= tournament.max_participants:
-                await interaction.response.send_message(
-                    f"❌ This tournament is full (**{tournament.max_participants}** player slots).", ephemeral=True
-                )
-                return
-
         group = self.values[0]
+        # Register first (the unique (tournament, player) constraint is the real lock), then
+        # check the cap. Two concurrent joins can no longer both slip past the pre-check and
+        # both get seated once max_participants is reached.
         registration, created = await TournamentRegistration.objects.aget_or_create(
             tournament=tournament, player=player, defaults={"group": group}
         )
@@ -140,6 +134,15 @@ class TournamentJoinSelect(discord.ui.Select):
                 f"You're already in the **{registration.get_group_display()}** group.", ephemeral=True
             )
             return
+
+        if tournament.max_participants:
+            total = await TournamentRegistration.objects.filter(tournament=tournament).acount()
+            if total > tournament.max_participants:
+                await registration.adelete()
+                await interaction.response.send_message(
+                    f"❌ This tournament is full (**{tournament.max_participants}** player slots).", ephemeral=True
+                )
+                return
 
         await increment_stat(player, "tournament_participations")
         layout = await build_tournament_player_menu(

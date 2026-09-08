@@ -73,7 +73,7 @@ def resolve_merge_level_from_bonuses(attack_bonus: int, health_bonus: int) -> in
 
 
 def format_level_table_row(level: int) -> str:
-    cfg = MERGE_LEVELS[level]
+    cfg = get_merge_level_config(level)
     tier_emoji = get_merge_level_emoji(level)
     if cfg.requires_common_inputs or level == 1:
         inputs = f"{cfg.input_count}× plain (no-special)"

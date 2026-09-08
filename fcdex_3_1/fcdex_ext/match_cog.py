@@ -10,8 +10,15 @@ from discord.ext import commands
 from ballsdex.core.utils.transformers import BallEnabledTransform, BallInstanceTransform
 from bd_models.models import Ball, BallInstance, Player
 from fcdex_3_1.fcdex_ext.bd_helpers import get_ball
+from fcdex_3_1.fcdex_ext.match_logic import (
+    MATCH_DAILY_LIMIT,
+    match_daily_limit_message,
+    match_daily_limit_reached,
+    matches_used_today,
+)
 from fcdex_3_1.fcdex_ext.tournament_loot import _pick_random_common_ball
 from fcdex_3_1.fcdex_ext.views import build_panel_layout
+from fcdex_3_1.models import MatchClaim
 
 if TYPE_CHECKING:
     from ballsdex.core.bot import BallsDexBot
@@ -31,7 +38,9 @@ class MatchCog(commands.GroupCog, group_name="match"):
     def __init__(self, bot: BallsDexBot):
         self.bot = bot
 
-    @app_commands.command(name="challenge", description="Challenge a rare clubball to a match (costs coins)")
+    @app_commands.command(
+        name="challenge", description=f"Challenge a rare clubball to a match (costs coins, {MATCH_DAILY_LIMIT}/day)"
+    )
     @app_commands.describe(
         clubball="The rare clubball you want to win", my_clubball="Your clubball to play the match with"
     )
@@ -51,6 +60,11 @@ class MatchCog(commands.GroupCog, group_name="match"):
             await interaction.response.send_message("That clubball doesn't belong to you.", ephemeral=True)
             return
 
+        used_today = await matches_used_today(player)
+        if match_daily_limit_reached(used_today):
+            await interaction.response.send_message(match_daily_limit_message(), ephemeral=True)
+            return
+
         player = await Player.objects.aget(pk=player.pk)
         if not player.can_afford(MATCH_CHALLENGE_COST):
             await interaction.response.send_message(
@@ -58,7 +72,24 @@ class MatchCog(commands.GroupCog, group_name="match"):
                 ephemeral=True,
             )
             return
-        await player.remove_money(MATCH_CHALLENGE_COST)
+        try:
+            await player.remove_money(MATCH_CHALLENGE_COST)
+        except ValueError:
+            await interaction.response.send_message(
+                f"You need **{MATCH_CHALLENGE_COST:,}** coins to play a match (balance: **{player.money:,}**).",
+                ephemeral=True,
+            )
+            return
+
+        claim = await MatchClaim.objects.acreate(player=player)
+        used_after = await matches_used_today(player)
+        if used_after > MATCH_DAILY_LIMIT:
+            # Lost the race against a concurrent challenge — refund and bail out.
+            await claim.adelete()
+            await player.add_money(MATCH_CHALLENGE_COST)
+            await interaction.response.send_message(match_daily_limit_message(), ephemeral=True)
+            return
+        attempts_left = MATCH_DAILY_LIMIT - used_after
 
         user_ball = await get_ball(my_clubball)
         user_power = _card_power(my_clubball, user_ball)
@@ -81,14 +112,16 @@ class MatchCog(commands.GroupCog, group_name="match"):
                 f"🏆 **Match won!**\n"
                 f"Your **{user_ball.country}** scored **{user_roll}** vs **{clubball.country}** **{target_roll}**.\n"
                 f"You won a random **{reward_ball.country}** clubball!\n"
-                f"-# Paid **{MATCH_CHALLENGE_COST:,}** coins · Balance: **{player.money:,}**"
+                f"-# Paid **{MATCH_CHALLENGE_COST:,}** coins · Balance: **{player.money:,}** · "
+                f"**{attempts_left}**/{MATCH_DAILY_LIMIT} matches left today"
             )
         else:
             result_text = (
                 f"❌ **Match lost.**\n"
                 f"Your **{user_ball.country}** scored **{user_roll}** vs **{clubball.country}** **{target_roll}**.\n"
                 f"Better luck next time!\n"
-                f"-# Paid **{MATCH_CHALLENGE_COST:,}** coins · Balance: **{player.money:,}**"
+                f"-# Paid **{MATCH_CHALLENGE_COST:,}** coins · Balance: **{player.money:,}** · "
+                f"**{attempts_left}**/{MATCH_DAILY_LIMIT} matches left today"
             )
 
         layout = build_panel_layout(

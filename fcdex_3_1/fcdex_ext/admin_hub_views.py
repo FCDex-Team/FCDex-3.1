@@ -30,30 +30,45 @@ class AdminHubControls(ActionRow):
 
     @button(label="Shop", style=discord.ButtonStyle.primary, emoji="🛒")
     async def shop(self, interaction: Interaction, button: Button):
+        if interaction.user.id != self.owner_id:
+            await interaction.response.send_message("This panel is not yours.", ephemeral=True)
+            return
         ctx = admin_context(interaction)
         layout = await build_shop_admin_layout(self.owner_id, ctx, notice="")
         await interaction.response.edit_message(view=layout)
 
     @button(label="Craft", style=discord.ButtonStyle.primary, emoji="🧪")
     async def craft(self, interaction: Interaction, button: Button):
+        if interaction.user.id != self.owner_id:
+            await interaction.response.send_message("This panel is not yours.", ephemeral=True)
+            return
         ctx = admin_context(interaction)
         layout = await build_craft_admin_layout(self.owner_id, ctx, notice="")
         await interaction.response.edit_message(view=layout)
 
     @button(label="Boss", style=discord.ButtonStyle.danger, emoji="👑")
     async def boss(self, interaction: Interaction, button: Button):
+        if interaction.user.id != self.owner_id:
+            await interaction.response.send_message("This panel is not yours.", ephemeral=True)
+            return
         ctx = admin_context(interaction)
         layout = await build_boss_admin_layout(ctx, self.owner_id)
         await interaction.response.edit_message(view=layout)
 
     @button(label="Quests", style=discord.ButtonStyle.primary, emoji="📜")
     async def quests(self, interaction: Interaction, button: Button):
+        if interaction.user.id != self.owner_id:
+            await interaction.response.send_message("This panel is not yours.", ephemeral=True)
+            return
         ctx = admin_context(interaction)
         layout = await build_quest_admin_layout(self.owner_id, ctx, notice="")
         await interaction.response.edit_message(view=layout)
 
     @button(label="Achievements", style=discord.ButtonStyle.primary, emoji="🏅")
     async def achievements(self, interaction: Interaction, button: Button):
+        if interaction.user.id != self.owner_id:
+            await interaction.response.send_message("This panel is not yours.", ephemeral=True)
+            return
         ctx = admin_context(interaction)
         layout = await build_achievement_admin_layout(self.owner_id, ctx, notice="")
         await interaction.response.edit_message(view=layout)
@@ -66,24 +81,36 @@ class AdminHubControlsRow2(ActionRow):
 
     @button(label="Merge", style=discord.ButtonStyle.primary, emoji="✨")
     async def merge(self, interaction: Interaction, button: Button):
+        if interaction.user.id != self.owner_id:
+            await interaction.response.send_message("This panel is not yours.", ephemeral=True)
+            return
         ctx = admin_context(interaction)
         layout = await build_merge_admin_layout(self.owner_id, ctx, notice="")
         await interaction.response.edit_message(view=layout)
 
     @button(label="Packs", style=discord.ButtonStyle.primary, emoji="📦")
     async def packs(self, interaction: Interaction, button: Button):
+        if interaction.user.id != self.owner_id:
+            await interaction.response.send_message("This panel is not yours.", ephemeral=True)
+            return
         ctx = admin_context(interaction)
         layout = build_pack_admin_layout(self.owner_id, ctx.guild_id)
         await interaction.response.edit_message(view=layout)
 
     @button(label="Tournament", style=discord.ButtonStyle.primary, emoji="🏟️")
     async def tournament(self, interaction: Interaction, button: Button):
+        if interaction.user.id != self.owner_id:
+            await interaction.response.send_message("This panel is not yours.", ephemeral=True)
+            return
         ctx = admin_context(interaction)
         layout = await build_tournament_admin_layout(self.owner_id, ctx)
         await interaction.response.edit_message(view=layout)
 
     @button(label="Owners", style=discord.ButtonStyle.secondary, emoji="🔍")
     async def owners(self, interaction: Interaction, button: Button):
+        if interaction.user.id != self.owner_id:
+            await interaction.response.send_message("This panel is not yours.", ephemeral=True)
+            return
         await interaction.response.send_modal(OwnersLookupModal(self.owner_id))
 
 
@@ -95,6 +122,9 @@ class OwnersLookupModal(Modal, title="Clubball owners"):
         self.owner_id = owner_id
 
     async def on_submit(self, interaction: Interaction) -> None:
+        if interaction.user.id != self.owner_id:
+            await interaction.response.send_message("This panel is not yours.", ephemeral=True)
+            return
         ball = await resolve_ball_for_lookup(self.clubball.value)
         if ball is None:
             await interaction.response.send_message("Clubball not found.", ephemeral=True)
