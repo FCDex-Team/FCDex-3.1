@@ -3,10 +3,7 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-    dependencies = [
-        ("fcdex_3_0", "0019_match_claim"),
-        ("bd_models", "0015_alter_ballinstance_server_id_and_more"),
-    ]
+    dependencies = [("fcdex_3_0", "0019_match_claim"), ("bd_models", "0015_alter_ballinstance_server_id_and_more")]
 
     operations = [
         migrations.CreateModel(

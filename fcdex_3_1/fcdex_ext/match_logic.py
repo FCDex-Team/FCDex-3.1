@@ -47,6 +47,5 @@ def match_daily_limit_message(*, limit: int = MATCH_DAILY_LIMIT, now: datetime |
     hours, rem = divmod(int(remaining.total_seconds()), 3600)
     minutes = rem // 60
     return (
-        f"You've reached today's match limit (**{limit}** per day). "
-        f"Resets in **{hours}h {minutes}m** (UTC midnight)."
+        f"You've reached today's match limit (**{limit}** per day). Resets in **{hours}h {minutes}m** (UTC midnight)."
     )

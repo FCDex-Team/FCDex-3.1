@@ -583,9 +583,7 @@ async def build_merge_picker_view(
         container.add_item(row)
         if total_pages > 1:
             container.add_item(
-                MergePageControls(
-                    owner_id, page=page, total_pages=total_pages, selected_ball_id=selected_ball_id
-                )
+                MergePageControls(owner_id, page=page, total_pages=total_pages, selected_ball_id=selected_ball_id)
             )
     container.add_item(Separator())
     container.add_item(

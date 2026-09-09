@@ -38,8 +38,7 @@ class MatchCog(commands.GroupCog, group_name="match"):
         self.bot = bot
 
     @app_commands.command(
-        name="challenge",
-        description=f"Challenge a rare clubball to a match (rarer = pricier, {MATCH_DAILY_LIMIT}/day)",
+        name="challenge", description=f"Challenge a rare clubball to a match (rarer = pricier, {MATCH_DAILY_LIMIT}/day)"
     )
     @app_commands.describe(
         clubball="The rare clubball you want to win", my_clubball="Your clubball to play the match with"
