@@ -7,7 +7,10 @@ from unittest.mock import AsyncMock, MagicMock
 from django.utils import timezone
 
 from fcdex_3_1.fcdex_ext.match_logic import (
+    MATCH_CHALLENGE_BASE_COST,
+    MATCH_CHALLENGE_MAX_COST,
     MATCH_DAILY_LIMIT,
+    match_challenge_cost,
     match_daily_limit_message,
     match_daily_limit_reached,
     matches_used_today,
@@ -32,6 +35,22 @@ def test_next_reset_delta_is_within_24h():
     remaining = next_reset_delta(now=now)
     assert remaining.total_seconds() > 0
     assert remaining.total_seconds() <= 24 * 3600
+
+
+def test_match_challenge_cost_floors_at_base_for_common_ball():
+    common = SimpleNamespace(rarity=0)
+    assert match_challenge_cost(common) == MATCH_CHALLENGE_BASE_COST
+
+
+def test_match_challenge_cost_scales_up_with_rarity():
+    cheap = SimpleNamespace(rarity=1)
+    pricey = SimpleNamespace(rarity=50)
+    assert match_challenge_cost(pricey) > match_challenge_cost(cheap) > MATCH_CHALLENGE_BASE_COST
+
+
+def test_match_challenge_cost_caps_at_max():
+    absurdly_rare = SimpleNamespace(rarity=1_000_000)
+    assert match_challenge_cost(absurdly_rare) == MATCH_CHALLENGE_MAX_COST
 
 
 def test_matches_used_today_counts_via_queryset(monkeypatch):

@@ -8,9 +8,19 @@ from django.utils import timezone
 from fcdex_3_1.models import MatchClaim
 
 if TYPE_CHECKING:
-    from bd_models.models import Player
+    from bd_models.models import Ball, Player
 
 MATCH_DAILY_LIMIT = 5
+
+MATCH_CHALLENGE_BASE_COST = 1000
+MATCH_CHALLENGE_COST_PER_RARITY = 20
+MATCH_CHALLENGE_MAX_COST = 10_000
+
+
+def match_challenge_cost(clubball: Ball) -> int:
+    """Rarer targets cost more — `rarity` is a spawn weight where higher = rarer/less common."""
+    scaled = MATCH_CHALLENGE_BASE_COST + int(clubball.rarity * MATCH_CHALLENGE_COST_PER_RARITY)
+    return max(MATCH_CHALLENGE_BASE_COST, min(MATCH_CHALLENGE_MAX_COST, scaled))
 
 
 def _today_start(now: datetime) -> datetime:

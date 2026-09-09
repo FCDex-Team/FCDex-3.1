@@ -12,6 +12,7 @@ from bd_models.models import Ball, BallInstance, Player
 from fcdex_3_1.fcdex_ext.bd_helpers import get_ball
 from fcdex_3_1.fcdex_ext.match_logic import (
     MATCH_DAILY_LIMIT,
+    match_challenge_cost,
     match_daily_limit_message,
     match_daily_limit_reached,
     matches_used_today,
@@ -22,8 +23,6 @@ from fcdex_3_1.models import MatchClaim
 
 if TYPE_CHECKING:
     from ballsdex.core.bot import BallsDexBot
-
-MATCH_CHALLENGE_COST = 1000
 
 
 def _card_power(instance: BallInstance, ball: Ball) -> int:
@@ -39,7 +38,8 @@ class MatchCog(commands.GroupCog, group_name="match"):
         self.bot = bot
 
     @app_commands.command(
-        name="challenge", description=f"Challenge a rare clubball to a match (costs coins, {MATCH_DAILY_LIMIT}/day)"
+        name="challenge",
+        description=f"Challenge a rare clubball to a match (rarer = pricier, {MATCH_DAILY_LIMIT}/day)",
     )
     @app_commands.describe(
         clubball="The rare clubball you want to win", my_clubball="Your clubball to play the match with"
@@ -65,18 +65,19 @@ class MatchCog(commands.GroupCog, group_name="match"):
             await interaction.response.send_message(match_daily_limit_message(), ephemeral=True)
             return
 
+        cost = match_challenge_cost(clubball)
         player = await Player.objects.aget(pk=player.pk)
-        if not player.can_afford(MATCH_CHALLENGE_COST):
+        if not player.can_afford(cost):
             await interaction.response.send_message(
-                f"You need **{MATCH_CHALLENGE_COST:,}** coins to play a match (balance: **{player.money:,}**).",
+                f"You need **{cost:,}** coins to challenge **{clubball.country}** (balance: **{player.money:,}**).",
                 ephemeral=True,
             )
             return
         try:
-            await player.remove_money(MATCH_CHALLENGE_COST)
+            await player.remove_money(cost)
         except ValueError:
             await interaction.response.send_message(
-                f"You need **{MATCH_CHALLENGE_COST:,}** coins to play a match (balance: **{player.money:,}**).",
+                f"You need **{cost:,}** coins to challenge **{clubball.country}** (balance: **{player.money:,}**).",
                 ephemeral=True,
             )
             return
@@ -86,7 +87,7 @@ class MatchCog(commands.GroupCog, group_name="match"):
         if used_after > MATCH_DAILY_LIMIT:
             # Lost the race against a concurrent challenge — refund and bail out.
             await claim.adelete()
-            await player.add_money(MATCH_CHALLENGE_COST)
+            await player.add_money(cost)
             await interaction.response.send_message(match_daily_limit_message(), ephemeral=True)
             return
         attempts_left = MATCH_DAILY_LIMIT - used_after
@@ -112,7 +113,7 @@ class MatchCog(commands.GroupCog, group_name="match"):
                 f"🏆 **Match won!**\n"
                 f"Your **{user_ball.country}** scored **{user_roll}** vs **{clubball.country}** **{target_roll}**.\n"
                 f"You won a random **{reward_ball.country}** clubball!\n"
-                f"-# Paid **{MATCH_CHALLENGE_COST:,}** coins · Balance: **{player.money:,}** · "
+                f"-# Paid **{cost:,}** coins · Balance: **{player.money:,}** · "
                 f"**{attempts_left}**/{MATCH_DAILY_LIMIT} matches left today"
             )
         else:
@@ -120,7 +121,7 @@ class MatchCog(commands.GroupCog, group_name="match"):
                 f"❌ **Match lost.**\n"
                 f"Your **{user_ball.country}** scored **{user_roll}** vs **{clubball.country}** **{target_roll}**.\n"
                 f"Better luck next time!\n"
-                f"-# Paid **{MATCH_CHALLENGE_COST:,}** coins · Balance: **{player.money:,}** · "
+                f"-# Paid **{cost:,}** coins · Balance: **{player.money:,}** · "
                 f"**{attempts_left}**/{MATCH_DAILY_LIMIT} matches left today"
             )
 

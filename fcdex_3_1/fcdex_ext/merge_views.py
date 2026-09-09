@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from math import ceil
 from typing import TYPE_CHECKING, cast
 
 import discord
@@ -39,6 +40,17 @@ if TYPE_CHECKING:
     from ballsdex.core.bot import BallsDexBot
 
 log = logging.getLogger("fcdex_3_1.merge.views")
+
+CLUBBALLS_PER_PAGE = 25  # Discord select menus cap out at 25 options.
+
+
+def _clamp_page(page: int, total_pages: int) -> int:
+    return max(0, min(page, total_pages - 1))
+
+
+def _page_slice(page: int, page_size: int) -> tuple[int, int]:
+    start = page * page_size
+    return start, start + page_size
 
 
 @dataclass(slots=True)
@@ -244,10 +256,18 @@ async def _send_merge_notice(
 
 
 async def _show_merge_panel(
-    interaction: Interaction, bot: BallsDexBot, owner_id: int, *, selected_ball_id: int | None = None, notice: str = ""
+    interaction: Interaction,
+    bot: BallsDexBot,
+    owner_id: int,
+    *,
+    selected_ball_id: int | None = None,
+    notice: str = "",
+    page: int = 0,
 ) -> None:
     try:
-        layout = await build_merge_picker_view(bot, owner_id, selected_ball_id=selected_ball_id, notice=notice)
+        layout = await build_merge_picker_view(
+            bot, owner_id, selected_ball_id=selected_ball_id, notice=notice, page=page
+        )
     except Exception as exc:
         log.exception("Failed to build merge panel for user %s", owner_id)
         user_notice = f"❌ Could not load forge panel ({type(exc).__name__}). Try `/merge` again."
@@ -273,8 +293,11 @@ async def _show_merge_panel(
 
 
 class MergeClubballSelect(discord.ui.Select):
-    def __init__(self, owner_id: int, summaries: list[MergeClubballSummary], *, selected_ball_id: int | None):
+    def __init__(
+        self, owner_id: int, summaries: list[MergeClubballSummary], *, selected_ball_id: int | None, page: int = 0
+    ):
         self.owner_id = owner_id
+        self.page = page
         options = [
             discord.SelectOption(
                 label=summary.ball.country[:100],
@@ -283,7 +306,7 @@ class MergeClubballSelect(discord.ui.Select):
                 emoji=get_merge_level_emoji(_open_level(summary.counts)),
                 default=summary.ball.pk == selected_ball_id,
             )
-            for summary in summaries[:25]
+            for summary in summaries
             if _selectable(summary)
         ]
         super().__init__(
@@ -298,7 +321,12 @@ class MergeClubballSelect(discord.ui.Select):
         bot = cast("BallsDexBot", interaction.client)
         try:
             await _show_merge_panel(
-                interaction, bot, self.owner_id, selected_ball_id=int(self.values[0]), notice="⏳ Loading forge ladder…"
+                interaction,
+                bot,
+                self.owner_id,
+                selected_ball_id=int(self.values[0]),
+                notice="⏳ Loading forge ladder…",
+                page=self.page,
             )
         except Exception as exc:
             log.exception("Merge select failed for user %s", self.owner_id)
@@ -307,6 +335,35 @@ class MergeClubballSelect(discord.ui.Select):
                 self.owner_id,
                 f"❌ Could not load that clubball: **{type(exc).__name__}** — {str(exc)[:200]}",
             )
+
+
+class MergePageControls(ActionRow):
+    def __init__(self, owner_id: int, *, page: int, total_pages: int, selected_ball_id: int | None):
+        super().__init__()
+        self.owner_id = owner_id
+        self.page = page
+        self.total_pages = total_pages
+        self.selected_ball_id = selected_ball_id
+        self.previous_button.disabled = page <= 0
+        self.next_button.disabled = page >= total_pages - 1
+
+    async def _go(self, interaction: Interaction, target_page: int) -> None:
+        if interaction.user.id != self.owner_id:
+            await interaction.response.send_message("This forge is private to you.", ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True)
+        bot = cast("BallsDexBot", interaction.client)
+        await _show_merge_panel(
+            interaction, bot, self.owner_id, selected_ball_id=self.selected_ball_id, page=target_page
+        )
+
+    @button(label="Previous", style=discord.ButtonStyle.secondary, emoji="◀️")
+    async def previous_button(self, interaction: Interaction, button: Button):
+        await self._go(interaction, self.page - 1)
+
+    @button(label="Next", style=discord.ButtonStyle.secondary, emoji="▶️")
+    async def next_button(self, interaction: Interaction, button: Button):
+        await self._go(interaction, self.page + 1)
 
 
 class MergeActionRow(ActionRow):
@@ -318,10 +375,12 @@ class MergeActionRow(ActionRow):
         can_forge: bool,
         target_level: int | None,
         counts: dict[int, int] | None = None,
+        page: int = 0,
     ):
         super().__init__()
         self.owner_id = owner_id
         self.ball_id = ball_id
+        self.page = page
         label, disabled = _forge_button_label(counts, target_level)
         self.forge_button.label = label[:80]
         self.forge_button.disabled = disabled or not can_forge
@@ -350,14 +409,19 @@ class MergeActionRow(ActionRow):
         bot = cast("BallsDexBot", interaction.client)
         try:
             await _show_merge_panel(
-                interaction, bot, self.owner_id, selected_ball_id=self.ball_id, notice="⏳ Forging your next tier…"
+                interaction,
+                bot,
+                self.owner_id,
+                selected_ball_id=self.ball_id,
+                notice="⏳ Forging your next tier…",
+                page=self.page,
             )
             player, _ = await Player.objects.aget_or_create(discord_id=self.owner_id)
             summaries = await _load_merge_summaries(player)
             summary = _find_summary(summaries, self.ball_id)
             if summary is None:
                 await _show_merge_panel(
-                    interaction, bot, self.owner_id, notice="❌ That clubball is no longer mergeable."
+                    interaction, bot, self.owner_id, notice="❌ That clubball is no longer mergeable.", page=self.page
                 )
                 return
 
@@ -369,6 +433,7 @@ class MergeActionRow(ActionRow):
                     self.owner_id,
                     selected_ball_id=self.ball_id,
                     notice="❌ You do not have enough copies for the next visible forge tier yet.",
+                    page=self.page,
                 )
                 return
 
@@ -382,15 +447,23 @@ class MergeActionRow(ActionRow):
                     self.owner_id,
                     selected_ball_id=self.ball_id,
                     notice="❌ Some input cards are no longer available. Refresh and try again.",
+                    page=self.page,
                 )
                 return
 
             await validate_merge_batch(player, instances)
             _, summary_text, _, _ = await execute_merge(player, instances, guild_id=interaction.guild_id, bot=bot)
-            await _show_merge_panel(interaction, bot, self.owner_id, selected_ball_id=self.ball_id, notice=summary_text)
+            await _show_merge_panel(
+                interaction, bot, self.owner_id, selected_ball_id=self.ball_id, notice=summary_text, page=self.page
+            )
         except MergeValidationError as exc:
             await _show_merge_panel(
-                interaction, bot, self.owner_id, selected_ball_id=self.ball_id, notice=f"❌ {exc.message}"
+                interaction,
+                bot,
+                self.owner_id,
+                selected_ball_id=self.ball_id,
+                notice=f"❌ {exc.message}",
+                page=self.page,
             )
         except Exception as exc:
             log.exception("Merge forge failed for user %s ball %s", self.owner_id, self.ball_id)
@@ -400,6 +473,7 @@ class MergeActionRow(ActionRow):
                 self.owner_id,
                 selected_ball_id=self.ball_id,
                 notice=f"❌ Forge failed: **{type(exc).__name__}** — {str(exc)[:200]}",
+                page=self.page,
             )
 
     @button(label="Refresh", style=discord.ButtonStyle.secondary, emoji="🔄")
@@ -410,7 +484,7 @@ class MergeActionRow(ActionRow):
         await interaction.response.defer(ephemeral=True)
         bot = cast("BallsDexBot", interaction.client)
         try:
-            await _show_merge_panel(interaction, bot, self.owner_id, selected_ball_id=self.ball_id)
+            await _show_merge_panel(interaction, bot, self.owner_id, selected_ball_id=self.ball_id, page=self.page)
         except Exception as exc:
             log.exception("Merge refresh failed for user %s", self.owner_id)
             await _send_merge_notice(
@@ -421,7 +495,7 @@ class MergeActionRow(ActionRow):
 
 
 async def build_merge_picker_view(
-    bot: BallsDexBot, owner_id: int, *, selected_ball_id: int | None = None, notice: str = ""
+    bot: BallsDexBot, owner_id: int, *, selected_ball_id: int | None = None, notice: str = "", page: int = 0
 ) -> LayoutView:
     player, _ = await Player.objects.aget_or_create(discord_id=owner_id)
     summaries = await _load_merge_summaries(player)
@@ -429,12 +503,20 @@ async def build_merge_picker_view(
     selected_ball_id = _resolve_selected_ball_id(selectable, selected_ball_id)
     selected = _find_summary(summaries, selected_ball_id)
 
+    total_pages = max(1, ceil(len(selectable) / CLUBBALLS_PER_PAGE))
+    page = _clamp_page(page, total_pages)
+    page_start, page_end = _page_slice(page, CLUBBALLS_PER_PAGE)
+    page_selectable = selectable[page_start:page_end]
+
     quota_settings = await get_merge_quota_settings()
     quota_snapshot = await get_merge_quota_snapshot(player)
     quota_block = format_quota_status_block(quota_snapshot, settings_period_days=quota_settings.period_days)
     tier_guide = " · ".join(format_level_table_row(level) for level in range(1, MAX_MERGE_LEVEL + 1))
 
     header = "# ✨ Merge forge"
+    if len(selectable) > CLUBBALLS_PER_PAGE:
+        page_range = f"{page_start + 1}-{min(page_end, len(selectable))}"
+        header += f"\n-# Page **{page + 1}/{total_pages}** · Clubballs **{page_range}** of **{len(selectable)}**"
     if notice:
         header = f"{notice}\n\n{header}"
 
@@ -497,8 +579,14 @@ async def build_merge_picker_view(
     if selectable:
         container.add_item(Separator())
         row = ActionRow()
-        row.add_item(MergeClubballSelect(owner_id, selectable, selected_ball_id=selected_ball_id))
+        row.add_item(MergeClubballSelect(owner_id, page_selectable, selected_ball_id=selected_ball_id, page=page))
         container.add_item(row)
+        if total_pages > 1:
+            container.add_item(
+                MergePageControls(
+                    owner_id, page=page, total_pages=total_pages, selected_ball_id=selected_ball_id
+                )
+            )
     container.add_item(Separator())
     container.add_item(
         MergeActionRow(
@@ -507,6 +595,7 @@ async def build_merge_picker_view(
             can_forge=target_level is not None,
             target_level=target_level,
             counts=selected.counts if selected is not None else None,
+            page=page,
         )
     )
     layout.add_item(container)
