@@ -277,8 +277,12 @@ def collection_card_file(ball: Ball, *, index: int = 1) -> discord.File | None:
     card = ball.collection_card
     if not card:
         return None
-    ext = card.name.rsplit(".", 1)[-1]
-    return discord.File(str(card.path), filename=f"pack-card-{index}.{ext}")
+    try:
+        ext = card.name.rsplit(".", 1)[-1]
+        return discord.File(str(card.path), filename=f"pack-card-{index}.{ext}")
+    except Exception:
+        log.warning("Could not load collection card for ball %s — skipping card image.", ball.pk)
+        return None
 
 
 async def render_pack_card_file(

@@ -27,8 +27,11 @@ async def _post_raid_announcement(
     view = BossJoinView(scope_id)
     file = None
     if boss_ball.collection_card:
-        ext = boss_ball.collection_card.name.split(".")[-1]
-        file = discord.File(str(boss_ball.collection_card.path), filename=f"boss.{ext}")
+        try:
+            ext = boss_ball.collection_card.name.split(".")[-1]
+            file = discord.File(str(boss_ball.collection_card.path), filename=f"boss.{ext}")
+        except Exception:
+            log.warning("Could not load collection card for boss ball %s — posting without image.", boss_ball.pk)
     content = (
         f"# Boss raid — {emoji} **{boss_ball.country}**\n"
         f"-# HP: **{raid.current_hp:,}** · Join below · admins: `/fcdex admin` → Boss"
