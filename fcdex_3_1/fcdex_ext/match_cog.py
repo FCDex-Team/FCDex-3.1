@@ -9,7 +9,7 @@ from discord.ext import commands
 
 from ballsdex.core.utils.transformers import BallEnabledTransform, BallInstanceTransform
 from bd_models.models import Ball, BallInstance, Player
-from fcdex_3_1.fcdex_ext.bd_helpers import get_ball
+from fcdex_3_1.fcdex_ext.bd_helpers import get_ball, instance_attack, instance_health
 from fcdex_3_1.fcdex_ext.match_logic import (
     MATCH_DAILY_LIMIT,
     match_challenge_cost,
@@ -26,8 +26,8 @@ if TYPE_CHECKING:
 
 
 def _card_power(instance: BallInstance, ball: Ball) -> int:
-    attack = instance.attack + ball.attack
-    health = instance.health + ball.health
+    attack = instance_attack(instance, ball)
+    health = instance_health(instance, ball)
     return attack * 2 + health
 
 
@@ -64,7 +64,7 @@ class MatchCog(commands.GroupCog, group_name="match"):
             await interaction.response.send_message(match_daily_limit_message(), ephemeral=True)
             return
 
-        cost = match_challenge_cost(clubball)
+        cost = await match_challenge_cost(clubball)
         player = await Player.objects.aget(pk=player.pk)
         if not player.can_afford(cost):
             await interaction.response.send_message(

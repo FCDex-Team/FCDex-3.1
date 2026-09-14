@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 from django.utils import timezone
 
+from fcdex_3_1.fcdex_ext.rarity_logic import fetch_all_balls
 from fcdex_3_1.models import MatchClaim
 
 if TYPE_CHECKING:
@@ -12,15 +13,26 @@ if TYPE_CHECKING:
 
 MATCH_DAILY_LIMIT = 5
 
-MATCH_CHALLENGE_BASE_COST = 1000
-MATCH_CHALLENGE_COST_PER_RARITY = 20
-MATCH_CHALLENGE_MAX_COST = 10_000
+MATCH_CHALLENGE_BASE_COST = 1_000
+MATCH_CHALLENGE_MAX_COST = 20_000
 
 
-def match_challenge_cost(clubball: Ball) -> int:
-    """Rarer targets cost more — `rarity` is a spawn weight where higher = rarer/less common."""
-    scaled = MATCH_CHALLENGE_BASE_COST + int(clubball.rarity * MATCH_CHALLENGE_COST_PER_RARITY)
-    return max(MATCH_CHALLENGE_BASE_COST, min(MATCH_CHALLENGE_MAX_COST, scaled))
+async def _rarity_bounds() -> tuple[float, float]:
+    values = [ball.rarity for ball in await fetch_all_balls() if ball.enabled]
+    if not values:
+        return 0.0, 0.0
+    return min(values), max(values)
+
+
+async def match_challenge_cost(clubball: Ball) -> int:
+    """Scale linearly from the base cost (most common target) to the max cost (rarest target)."""
+    min_rarity, max_rarity = await _rarity_bounds()
+    if max_rarity <= min_rarity:
+        return MATCH_CHALLENGE_BASE_COST
+    ratio = (clubball.rarity - min_rarity) / (max_rarity - min_rarity)
+    ratio = max(0.0, min(1.0, ratio))
+    cost = MATCH_CHALLENGE_BASE_COST + ratio * (MATCH_CHALLENGE_MAX_COST - MATCH_CHALLENGE_BASE_COST)
+    return int(round(cost))
 
 
 def _today_start(now: datetime) -> datetime:
