@@ -17,7 +17,6 @@ from fcdex_3_1.fcdex_ext.match_logic import (
     match_daily_limit_reached,
     matches_used_today,
 )
-from fcdex_3_1.fcdex_ext.tournament_loot import _pick_random_common_ball
 from fcdex_3_1.fcdex_ext.views import build_panel_layout
 from fcdex_3_1.models import MatchClaim
 
@@ -99,19 +98,13 @@ class MatchCog(commands.GroupCog, group_name="match"):
         target_roll = int(target_power * random.uniform(0.8, 1.2))
 
         if user_roll >= target_roll:
-            reward_ball = await _pick_random_common_ball()
-            if reward_ball is None:
-                await interaction.response.send_message(
-                    "No enabled common clubballs are available for rewards.", ephemeral=True
-                )
-                return
             await BallInstance.objects.acreate(
-                ball=reward_ball, player=player, attack_bonus=0, health_bonus=0, server_id=interaction.guild_id
+                ball=clubball, player=player, attack_bonus=0, health_bonus=0, server_id=interaction.guild_id
             )
             result_text = (
                 f"🏆 **Match won!**\n"
                 f"Your **{user_ball.country}** scored **{user_roll}** vs **{clubball.country}** **{target_roll}**.\n"
-                f"You won a random **{reward_ball.country}** clubball!\n"
+                f"You caught **{clubball.country}**!\n"
                 f"-# Paid **{cost:,}** coins · Balance: **{player.money:,}** · "
                 f"**{attempts_left}**/{MATCH_DAILY_LIMIT} matches left today"
             )
