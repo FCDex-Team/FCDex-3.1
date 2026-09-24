@@ -25,11 +25,11 @@ async def _rarity_bounds() -> tuple[float, float]:
 
 
 async def match_challenge_cost(clubball: Ball) -> int:
-    """Scale linearly from the base cost (most common target) to the max cost (rarest target)."""
+    """Scale linearly from the max cost (lowest rarity value = rarest) to the base cost (highest value = commonest)."""
     min_rarity, max_rarity = await _rarity_bounds()
     if max_rarity <= min_rarity:
         return MATCH_CHALLENGE_BASE_COST
-    ratio = (clubball.rarity - min_rarity) / (max_rarity - min_rarity)
+    ratio = (max_rarity - clubball.rarity) / (max_rarity - min_rarity)
     ratio = max(0.0, min(1.0, ratio))
     cost = MATCH_CHALLENGE_BASE_COST + ratio * (MATCH_CHALLENGE_MAX_COST - MATCH_CHALLENGE_BASE_COST)
     return int(round(cost))

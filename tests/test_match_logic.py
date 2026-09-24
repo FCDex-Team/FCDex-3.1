@@ -44,14 +44,14 @@ def _patch_dex_rarities(monkeypatch, rarities: list[float]) -> None:
 
 def test_match_challenge_cost_floors_at_base_for_most_common_ball(monkeypatch):
     _patch_dex_rarities(monkeypatch, [1, 25, 50])
-    common = SimpleNamespace(rarity=1)
+    common = SimpleNamespace(rarity=50)
     assert asyncio.run(match_challenge_cost(common)) == MATCH_CHALLENGE_BASE_COST
 
 
 def test_match_challenge_cost_scales_up_with_rarity(monkeypatch):
     _patch_dex_rarities(monkeypatch, [1, 25, 50])
-    cheap = SimpleNamespace(rarity=10)
-    pricey = SimpleNamespace(rarity=40)
+    cheap = SimpleNamespace(rarity=40)
+    pricey = SimpleNamespace(rarity=10)
     cheap_cost = asyncio.run(match_challenge_cost(cheap))
     pricey_cost = asyncio.run(match_challenge_cost(pricey))
     assert pricey_cost > cheap_cost > MATCH_CHALLENGE_BASE_COST
@@ -59,7 +59,7 @@ def test_match_challenge_cost_scales_up_with_rarity(monkeypatch):
 
 def test_match_challenge_cost_caps_at_max_for_rarest_ball(monkeypatch):
     _patch_dex_rarities(monkeypatch, [1, 25, 50])
-    rarest = SimpleNamespace(rarity=50)
+    rarest = SimpleNamespace(rarity=1)
     assert asyncio.run(match_challenge_cost(rarest)) == MATCH_CHALLENGE_MAX_COST
 
 
