@@ -9,13 +9,9 @@ from discord.ui import ActionRow, Button, Container, Modal, Separator, TextDispl
 from ballsdex.core.discord import LayoutView
 from bd_models.models import Player
 from fcdex_3_1.fcdex_ext.tournament_config import cap_error, get_tournament_config
-from fcdex_3_1.fcdex_ext.tournament_schedule import (
-    format_for_input,
-    parse_optional_datetime,
-    parse_status,
-    schedule_summary_lines,
-)
-from fcdex_3_1.fcdex_ext.views import build_tournament_layout, truncate_text
+from fcdex_3_1.fcdex_ext.tournament_join import TournamentActionButton, build_announcement_layout
+from fcdex_3_1.fcdex_ext.tournament_schedule import format_for_input, parse_optional_datetime, parse_status
+from fcdex_3_1.fcdex_ext.views import truncate_text
 from fcdex_3_1.models import Tournament, TournamentGroup, TournamentStatus
 
 if TYPE_CHECKING:
@@ -542,20 +538,10 @@ async def post_tournament_announcement(interaction: Interaction, tournament: Tou
         raise RuntimeError("Missing channel for tournament announcement.")
 
     host_discord_id = await Player.objects.values_list("discord_id", flat=True).aget(pk=tournament.host_id)
-    schedule_lines = schedule_summary_lines(tournament)
-    cap_text = "unlimited" if not tournament.max_participants else f"{tournament.max_participants:,}"
-    sections = [
-        f"**Status:** {tournament.get_status_display()}\n"
-        f"**Host:** <@{host_discord_id}>\n"
-        f"**Max participants:** {cap_text}\n"
-        f"**Semifinal cutoff:** {tournament.semifinal_cutoff} points\n"
-        f"**Betting:** {'enabled' if tournament.betting_enabled else 'disabled'}\n"
-        + ("\n".join(schedule_lines) + "\n" if schedule_lines else "")
-        + f"\n{tournament.description or 'No description provided.'}\n\n"
-        f"-# `/tournament view` · `/tournament match` · `/tournament bet`"
-    ]
-    layout = build_tournament_layout(f"🏟️ {tournament.name}", sections)
+    layout = await build_announcement_layout(tournament, host_discord_id)
     await channel.send(view=layout)
+    # sending a view can drop dynamic items that were registered for it, so make sure the buttons stay handled
+    interaction.client.add_dynamic_items(TournamentActionButton)
 
 
 class TournamentHostView(LayoutView):

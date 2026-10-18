@@ -15,6 +15,7 @@ from fcdex_3_1.fcdex_ext.services import increment_stat
 from fcdex_3_1.fcdex_ext.tournament_bets import place_bet
 from fcdex_3_1.fcdex_ext.tournament_bracket import create_semifinal_pairings, sync_bracket_for_status
 from fcdex_3_1.fcdex_ext.tournament_host import tournament_start_eligibility, viewer_can_start_group_stage
+from fcdex_3_1.fcdex_ext.tournament_join import TournamentActionButton
 from fcdex_3_1.fcdex_ext.tournament_match_views import build_tournament_match_menu
 from fcdex_3_1.fcdex_ext.tournament_player_views import build_tournament_player_menu
 from fcdex_3_1.fcdex_ext.tournament_schedule import past_end_reason
@@ -54,6 +55,13 @@ class TournamentCog(commands.GroupCog, group_name="tournament"):
 
     def __init__(self, bot: BallsDexBot):
         self.bot = bot
+
+    async def cog_load(self) -> None:
+        # the Join / Leave buttons on tournament announcements keep working across restarts
+        self.bot.add_dynamic_items(TournamentActionButton)
+
+    async def cog_unload(self) -> None:
+        self.bot.remove_dynamic_items(TournamentActionButton)
 
     @app_commands.command(
         name="manage",

@@ -8,7 +8,7 @@ from discord.ui import ActionRow, Button, Container, Separator, TextDisplay, but
 
 from ballsdex.core.discord import LayoutView
 from bd_models.models import Player
-from fcdex_3_1.fcdex_ext.services import increment_stat
+from fcdex_3_1.fcdex_ext.tournament_join import join_tournament, leave_tournament
 from fcdex_3_1.fcdex_ext.tournament_match_views import build_bracket_sections
 from fcdex_3_1.fcdex_ext.tournament_schedule import (
     registration_closed_reason,
@@ -117,36 +117,13 @@ class TournamentJoinSelect(discord.ui.Select):
             return
 
         tournament = await Tournament.objects.aget(pk=self.tournament_id)
-        if reason := registration_closed_reason(tournament):
-            await interaction.response.send_message(reason, ephemeral=True)
-            return
-
         player, _ = await Player.objects.aget_or_create(discord_id=interaction.user.id)
-        group = self.values[0]
-        # Register first (the unique (tournament, player) constraint is the real lock), then
-        # check the cap. Two concurrent joins can no longer both slip past the pre-check and
-        # both get seated once max_participants is reached.
-        registration, created = await TournamentRegistration.objects.aget_or_create(
-            tournament=tournament, player=player, defaults={"group": group}
-        )
-        if not created:
-            await interaction.response.send_message(
-                f"You're already in the **{registration.get_group_display()}** group.", ephemeral=True
-            )
+        outcome = await join_tournament(player, tournament, self.values[0])
+        if not outcome.ok:
+            await interaction.response.send_message(outcome.message, ephemeral=True)
             return
-
-        if tournament.max_participants:
-            total = await TournamentRegistration.objects.filter(tournament=tournament).acount()
-            if total > tournament.max_participants:
-                await registration.adelete()
-                await interaction.response.send_message(
-                    f"❌ This tournament is full (**{tournament.max_participants}** player slots).", ephemeral=True
-                )
-                return
-
-        await increment_stat(player, "tournament_participations")
         layout = await build_tournament_player_menu(
-            interaction.user.id, tournament.pk, mode="overview", notice=f"✅ Joined **{group.title()}** group!"
+            interaction.user.id, tournament.pk, mode="overview", notice=outcome.message
         )
         await interaction.response.edit_message(view=layout)
 
@@ -170,24 +147,14 @@ class TournamentLeaveRow(ActionRow):
             return
 
         tournament = await Tournament.objects.aget(pk=self.tournament_id)
-        if not registration_is_open(tournament):
-            await interaction.response.send_message(
-                "You can only leave while **registration** is still open (before the host starts group stage).",
-                ephemeral=True,
-            )
-            return
-
         player, _ = await Player.objects.aget_or_create(discord_id=interaction.user.id)
-        deleted, _ = await TournamentRegistration.objects.filter(tournament=tournament, player=player).adelete()
-        if not deleted:
-            await interaction.response.send_message("You aren't registered in this tournament.", ephemeral=True)
+        outcome = await leave_tournament(player, tournament)
+        if not outcome.ok:
+            await interaction.response.send_message(outcome.message, ephemeral=True)
             return
 
         layout = await build_tournament_player_menu(
-            interaction.user.id,
-            tournament.pk,
-            mode="overview",
-            notice="You left the tournament. Pick **Legacy** or **Main** below to rejoin.",
+            interaction.user.id, tournament.pk, mode="overview", notice=outcome.message
         )
         await interaction.response.edit_message(view=layout)
 
