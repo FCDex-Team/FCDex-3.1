@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from bd_models.models import BallInstance, Player, Special
+from fcdex_3_1.fcdex_ext.currency import format_money
 from fcdex_3_1.models import SBCRecipe, SBCRecipeType
 
 CUSTOM_SPECIAL_NAME = "FCDex Custom"
@@ -74,5 +75,5 @@ async def complete_sbc(player: Player, recipe: SBCRecipe, *, guild_id: int | Non
         tag = " (Card)"
     parts = [f"**{recipe.name}** complete! Received **{reward_name}{tag}**"]
     if recipe.reward_money:
-        parts.append(f"**+{recipe.reward_money:,}** coins")
+        parts.append(f"**+{format_money(recipe.reward_money)}**")
     return " · ".join(parts)

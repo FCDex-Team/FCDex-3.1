@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from django.utils import timezone
 
 from bd_models.models import Player
+from fcdex_3_1.fcdex_ext.currency import format_money
 from fcdex_3_1.models import PlayerQuestProgress, QuestDefinition
 
 DAILY_QUESTS = (
@@ -124,4 +125,4 @@ async def claim_quest(player: Player, quest_key: str) -> tuple[bool, str]:
     label = spec.label if spec else quest_key
     if reward:
         await player.add_money(reward)
-    return True, f"Claimed **{label}** — **+{reward:,}** coins!"
+    return True, f"Claimed **{label}** — **+{format_money(reward)}**!"

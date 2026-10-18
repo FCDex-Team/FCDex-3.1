@@ -40,7 +40,7 @@ from fcdex_3_1.models import PackType as ModelPackType
 def test_format_pack_open_message_with_stat_rolls():
     lines = [PackRewardLine("Alpha", 5, -2, "Shiny"), PackRewardLine("Beta", -3, 8, None)]
     text = format_pack_open_message("Daily Pack", 293, lines)
-    assert "**+293** coins" in text
+    assert "**+293 coins**" in text
     assert "**2** clubball(s)" in text
     assert "**Alpha**" in text and "`+5%` ATK" in text
     assert "**Shiny**" in text

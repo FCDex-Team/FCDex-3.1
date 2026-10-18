@@ -6,6 +6,7 @@ import discord
 from django.utils import timezone
 
 from bd_models.models import Player
+from fcdex_3_1.fcdex_ext.currency import format_money
 from fcdex_3_1.fcdex_ext.services import DMSendOutcome, send_player_dm
 from fcdex_3_1.fcdex_ext.tournament_bets import resolve_bets_for_match
 from fcdex_3_1.fcdex_ext.tournament_loot import grant_match_loot, load_match_prizes
@@ -168,7 +169,7 @@ async def claim_match_victory(
         reward_lines.append(loot_text)
         if not prize_pool and tournament.match_win_reward:
             await winner.add_money(tournament.match_win_reward)
-            reward_lines.append(f"**+{tournament.match_win_reward:,}** coins")
+            reward_lines.append(f"**+{format_money(tournament.match_win_reward)}**")
         await TournamentMatch.objects.filter(pk=match.pk, reward_claimed=False).aupdate(reward_claimed=True)
 
     try:

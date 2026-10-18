@@ -8,6 +8,7 @@ import discord
 from discord.ui import ActionRow, Button, Container, Modal, Separator, TextDisplay, TextInput, button
 
 from ballsdex.core.discord import LayoutView
+from fcdex_3_1.fcdex_ext.currency import format_money
 from fcdex_3_1.fcdex_ext.interaction_context import AdminContext, admin_context
 from fcdex_3_1.fcdex_ext.views import AdminHubBackRow, truncate_text
 from fcdex_3_1.models import QuestDefinition, QuestHook
@@ -163,7 +164,9 @@ class QuestEditSelect(discord.ui.Select):
         self.owner_id = owner_id
         options = [
             discord.SelectOption(
-                label=q.label[:100], value=str(q.pk), description=f"`{q.quest_key}` · +{q.reward_coins:,} coins"[:100]
+                label=q.label[:100],
+                value=str(q.pk),
+                description=f"`{q.quest_key}` · +{format_money(q.reward_coins)}"[:100],
             )
             for q in quests[:25]
         ]
@@ -184,7 +187,7 @@ async def build_quest_admin_layout(owner_id: int, ctx: AdminContext, *, notice: 
         hook_label = QuestHook(quest.hook_key).label
         lines.append(
             f"**{quest.label}** · `{quest.quest_key}`\n"
-            f"-# Target **{quest.target}** · **+{quest.reward_coins:,}** coins · hook **{hook_label}** · "
+            f"-# Target **{quest.target}** · **+{format_money(quest.reward_coins)}** · hook **{hook_label}** · "
             f"{'✅' if quest.enabled else '🚫'}"
         )
     body = "\n\n".join(lines) if lines else "*No quests in database — defaults apply until you create one.*"

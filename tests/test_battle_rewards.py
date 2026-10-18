@@ -15,12 +15,12 @@ def test_battle_challenge_coin_bounds():
 def test_format_battle_challenge_reward_with_ball():
     line = PackRewardLine("Arsenal", 4, -2, None)
     text = format_battle_challenge_reward_message(320, line)
-    assert "**+320** coins" in text
+    assert "**+320 coins**" in text
     assert "**Arsenal**" in text
     assert "`+4%` ATK" in text
 
 
 def test_format_battle_challenge_reward_no_ball():
     text = format_battle_challenge_reward_message(250, None)
-    assert "**+250** coins" in text
+    assert "**+250 coins**" in text
     assert "dex empty" in text

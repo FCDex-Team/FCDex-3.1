@@ -9,6 +9,7 @@ from discord.ui import ActionRow, Button, Container, Modal, Separator, TextDispl
 from ballsdex.core.discord import LayoutView
 from bd_models.models import Special
 from fcdex_3_1.fcdex_ext.bd_resolve import resolve_ball_input
+from fcdex_3_1.fcdex_ext.currency import format_money
 from fcdex_3_1.fcdex_ext.discord_emoji import option_label_with_emoji
 from fcdex_3_1.fcdex_ext.interaction_context import AdminContext, admin_context
 from fcdex_3_1.fcdex_ext.shop_logic import format_bundle_line_async, list_shop_bundles
@@ -116,7 +117,7 @@ class ShopAdminControls(ActionRow):
         await interaction.response.send_modal(CreateBundleModal(self.owner_id))
 
     @button(label="Add item", style=discord.ButtonStyle.primary, emoji="🎴")
-    async def add_item(self, interaction: Interaction, button: Button):
+    async def add_bundle_item(self, interaction: Interaction, button: Button):
         await interaction.response.send_modal(AddBundleItemModal(self.owner_id))
 
     @button(label="Refresh", style=discord.ButtonStyle.secondary, emoji="🔄")
@@ -133,7 +134,7 @@ class ShopBundleToggleSelect(discord.ui.Select):
             discord.SelectOption(
                 label=option_label_with_emoji(b.name, b.emoji, default="🛒"),
                 value=str(b.pk),
-                description=f"{'On' if b.enabled else 'Off'} · {b.price:,} coins"[:100],
+                description=f"{'On' if b.enabled else 'Off'} · {format_money(b.price)}"[:100],
             )
             for b in bundles[:25]
         ]

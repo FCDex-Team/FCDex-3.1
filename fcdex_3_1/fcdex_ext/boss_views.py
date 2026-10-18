@@ -4,9 +4,9 @@ import logging
 from typing import TYPE_CHECKING
 
 import discord
-from discord.ui import ActionRow, Button, Container, Modal, Separator, TextDisplay, TextInput, View, button
+from discord.ui import ActionRow, Button, Container, Modal, Separator, TextDisplay, TextInput, button
 
-from ballsdex.core.discord import LayoutView
+from ballsdex.core.discord import LayoutView, View
 from bd_models.models import Ball, BallInstance, Player
 from fcdex_3_1.fcdex_ext import boss_raid
 from fcdex_3_1.fcdex_ext.bd_resolve import resolve_ball_input

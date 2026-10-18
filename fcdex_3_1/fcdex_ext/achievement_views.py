@@ -8,6 +8,7 @@ from discord.ui import ActionRow, Button, Container, Separator, TextDisplay, but
 
 from ballsdex.core.discord import LayoutView
 from bd_models.models import Player
+from fcdex_3_1.fcdex_ext.currency import format_money
 from fcdex_3_1.fcdex_ext.services import (
     achievement_is_complete,
     check_achievements,
@@ -28,7 +29,7 @@ def _reward_message(achievement: Achievement) -> str:
     reward = achievement.reward_ball
     parts: list[str] = []
     if achievement.reward_money:
-        parts.append(f"{achievement.reward_money:,} coins")
+        parts.append(format_money(achievement.reward_money))
     if reward is not None:
         parts.append(f"**{reward.country}** card")
     return " + ".join(parts) if parts else "bragging rights"

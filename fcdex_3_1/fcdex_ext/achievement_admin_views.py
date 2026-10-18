@@ -15,6 +15,7 @@ from fcdex_3_1.fcdex_ext.achievement_admin_util import (
     parse_achievement_extras,
 )
 from fcdex_3_1.fcdex_ext.bd_resolve import resolve_ball_input
+from fcdex_3_1.fcdex_ext.currency import format_money
 from fcdex_3_1.fcdex_ext.discord_emoji import option_label_with_emoji
 from fcdex_3_1.fcdex_ext.interaction_context import AdminContext, admin_context
 from fcdex_3_1.fcdex_ext.views import AdminHubBackRow, truncate_text
@@ -248,7 +249,7 @@ class AchievementEditSelect(discord.ui.Select):
             discord.SelectOption(
                 label=option_label_with_emoji(a.name, a.emoji, default="🏆"),
                 value=str(a.pk),
-                description=f"goal {a.required_count} · +{a.reward_money:,} coins"[:100],
+                description=f"goal {a.required_count} · +{format_money(a.reward_money)}"[:100],
             )
             for a in achievements[:25]
         ]
@@ -328,7 +329,7 @@ async def build_achievement_admin_layout(
         reward_ball = achievement.reward_ball
         reward_parts: list[str] = []
         if achievement.reward_money:
-            reward_parts.append(f"**+{achievement.reward_money:,}** coins")
+            reward_parts.append(f"**+{format_money(achievement.reward_money)}**")
         if reward_ball:
             reward_parts.append(f"**{reward_ball.country}** card")
         reward_text = " · ".join(reward_parts) if reward_parts else "*no reward*"

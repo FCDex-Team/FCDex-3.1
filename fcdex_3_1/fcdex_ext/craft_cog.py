@@ -8,6 +8,7 @@ from discord.ext import commands
 
 from bd_models.models import Player
 from fcdex_3_1.fcdex_ext.craft_logic import CraftError, complete_sbc
+from fcdex_3_1.fcdex_ext.currency import format_money
 from fcdex_3_1.fcdex_ext.views import build_panel_layout
 from fcdex_3_1.models import SBCRecipe, SBCRecipeType
 
@@ -39,12 +40,12 @@ class CraftCog(commands.GroupCog, group_name="craft"):
             if recipe.recipe_type == SBCRecipeType.CUSTOM_TO_CARD:
                 lines.append(
                     f"{tag} **{recipe.name}** — **{recipe.required_count}×** Custom → **{rew}**"
-                    + (f" · **+{recipe.reward_money:,}** coins" if recipe.reward_money else "")
+                    + (f" · **+{format_money(recipe.reward_money)}**" if recipe.reward_money else "")
                 )
             else:
                 lines.append(
                     f"{tag} **{recipe.name}** — **{recipe.required_count}×** {req} → **{rew}**"
-                    + (f" · **+{recipe.reward_money:,}** coins" if recipe.reward_money else "")
+                    + (f" · **+{format_money(recipe.reward_money)}**" if recipe.reward_money else "")
                 )
         empty = "*No SBC recipes yet — add them in `/fcdex admin` → Craft or the web panel.*"
         body = "\n".join(lines) if lines else empty

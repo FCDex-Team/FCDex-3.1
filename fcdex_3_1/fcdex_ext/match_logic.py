@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import random
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
 
@@ -15,6 +17,32 @@ MATCH_DAILY_LIMIT = 5
 
 MATCH_CHALLENGE_BASE_COST = 1_000
 MATCH_CHALLENGE_MAX_COST = 20_000
+
+# Each side rolls its power within +/-20% so an even matchup stays unpredictable.
+MATCH_ROLL_SPREAD = 0.2
+
+
+@dataclass(frozen=True, slots=True)
+class MatchRoll:
+    user_roll: int
+    target_roll: int
+
+    @property
+    def won(self) -> bool:
+        return self.user_roll >= self.target_roll
+
+
+def card_power(attack: int, health: int) -> int:
+    """Single strength number shared by `/match challenge` and match spawns."""
+    return attack * 2 + health
+
+
+def roll_match(user_power: int, target_power: int, rng: random.Random | None = None) -> MatchRoll:
+    source = rng or random
+    low, high = 1 - MATCH_ROLL_SPREAD, 1 + MATCH_ROLL_SPREAD
+    return MatchRoll(
+        user_roll=int(user_power * source.uniform(low, high)), target_roll=int(target_power * source.uniform(low, high))
+    )
 
 
 async def _rarity_bounds() -> tuple[float, float]:

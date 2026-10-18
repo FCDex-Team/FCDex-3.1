@@ -3,6 +3,7 @@ from __future__ import annotations
 import random
 
 from bd_models.models import Ball, BallInstance, Player
+from fcdex_3_1.fcdex_ext.currency import format_money
 from fcdex_3_1.fcdex_ext.rarity_logic import fetch_all_balls, pick_common_ball
 from fcdex_3_1.models import TournamentMatch, TournamentMatchPrize, TournamentParticipationReward, TournamentPrizeType
 
@@ -30,7 +31,7 @@ async def grant_prize_entry(player: Player, prize: PrizeEntry, *, guild_id: int 
         amount = prize.coins or 0
         if amount:
             await player.add_money(amount)
-        return f"**+{amount:,}** coins"
+        return f"**+{format_money(amount)}**"
 
     if prize.prize_type == TournamentPrizeType.BALL and prize.ball_id:
         ball = await Ball.objects.aget(pk=prize.ball_id)

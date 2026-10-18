@@ -3,9 +3,11 @@ from __future__ import annotations
 from enum import StrEnum
 
 import discord
+from django.db.models import F
 from django.utils import timezone
 
 from bd_models.models import Ball, BallInstance, Player
+from fcdex_3_1.fcdex_ext.currency import format_money
 from fcdex_3_1.models import Achievement, AchievementType, PlayerAchievement, PlayerStats
 
 
@@ -51,6 +53,12 @@ async def increment_stat(player: Player, stat: str, amount: int = 1) -> PlayerSt
     await stats.asave(update_fields=(stat,))
     await check_achievements(player)
     return stats
+
+
+async def decrement_stat(player: Player, stat: str, amount: int = 1) -> None:
+    """Take back a counted action without ever letting the counter drop below zero."""
+    stats = await get_or_create_stats(player)
+    await PlayerStats.objects.filter(pk=stats.pk, **{f"{stat}__gte": amount}).aupdate(**{stat: F(stat) - amount})
 
 
 async def check_achievements(player: Player) -> None:
@@ -130,7 +138,7 @@ async def claim_achievement(player: Player, achievement: Achievement) -> tuple[b
 
     rewards: list[str] = []
     if achievement.reward_money:
-        rewards.append(f"{achievement.reward_money:,} coins")
+        rewards.append(format_money(achievement.reward_money))
     if achievement.reward_ball_id:
         ball = await Ball.objects.aget(pk=achievement.reward_ball_id)
         rewards.append(f"a {ball.country} card")

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from bd_models.models import Player
+from fcdex_3_1.fcdex_ext.currency import format_money
 from fcdex_3_1.models import Tournament, TournamentBet, TournamentMatch
 
 
@@ -21,11 +22,13 @@ async def place_bet(
     if bettor.pk in (match.player1_id, match.player2_id):
         return False, "Players in this match can't place bets on it."
     if amount < tournament.min_bet or amount > tournament.max_bet:
-        return False, f"Bets must be between **{tournament.min_bet:,}** and **{tournament.max_bet:,}** coins."
+        return False, (
+            f"Bets must be between **{format_money(tournament.min_bet)}** and **{format_money(tournament.max_bet)}**."
+        )
 
     bettor = await Player.objects.aget(pk=bettor.pk)
     if not bettor.can_afford(amount):
-        return False, f"You only have **{bettor.money:,}** coins."
+        return False, f"You only have **{format_money(bettor.money)}**."
 
     if await TournamentBet.objects.filter(match=match, bettor=bettor, resolved=False).aexists():
         return False, "You already have an open bet on this match."
@@ -33,11 +36,11 @@ async def place_bet(
     try:
         await bettor.remove_money(amount)
     except ValueError:
-        return False, "Not enough coins for that wager."
+        return False, "You can no longer afford that wager."
 
     await TournamentBet.objects.acreate(tournament=tournament, match=match, bettor=bettor, picked=picked, amount=amount)
     return True, (
-        f"Placed **{amount:,}** coins on <@{picked.discord_id}> for match **#{match.pk}** "
+        f"Placed **{format_money(amount)}** on <@{picked.discord_id}> for match **#{match.pk}** "
         f"({tournament.bet_payout_multiplier}x payout if they win)."
     )
 
@@ -53,5 +56,5 @@ async def resolve_bets_for_match(match: TournamentMatch, winner: Player) -> list
         if payout:
             bettor = await Player.objects.aget(pk=bet.bettor_id)
             await bettor.add_money(payout)
-            lines.append(f"<@{bettor.discord_id}> won **{payout:,}** coins")
+            lines.append(f"<@{bettor.discord_id}> won **{format_money(payout)}**")
     return lines

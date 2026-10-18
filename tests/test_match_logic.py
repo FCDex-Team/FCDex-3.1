@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import random
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
@@ -10,11 +11,15 @@ from fcdex_3_1.fcdex_ext.match_logic import (
     MATCH_CHALLENGE_BASE_COST,
     MATCH_CHALLENGE_MAX_COST,
     MATCH_DAILY_LIMIT,
+    MATCH_ROLL_SPREAD,
+    MatchRoll,
+    card_power,
     match_challenge_cost,
     match_daily_limit_message,
     match_daily_limit_reached,
     matches_used_today,
     next_reset_delta,
+    roll_match,
 )
 
 
@@ -91,3 +96,34 @@ def test_matches_used_today_counts_via_queryset(monkeypatch):
     _, kwargs = mock_objects.filter.call_args
     assert kwargs["player"] is player
     assert "played_at__gte" in kwargs
+
+
+def test_card_power_counts_attack_twice():
+    assert card_power(100, 50) == 250
+    assert card_power(0, 0) == 0
+
+
+def test_match_roll_win_condition_is_user_roll_at_least_target():
+    assert MatchRoll(user_roll=10, target_roll=10).won
+    assert MatchRoll(user_roll=11, target_roll=10).won
+    assert not MatchRoll(user_roll=9, target_roll=10).won
+
+
+def test_roll_match_stays_within_the_spread():
+    rng = random.Random(42)
+    for _ in range(500):
+        roll = roll_match(1000, 2000, rng)
+        assert 1000 * (1 - MATCH_ROLL_SPREAD) - 1 <= roll.user_roll <= 1000 * (1 + MATCH_ROLL_SPREAD)
+        assert 2000 * (1 - MATCH_ROLL_SPREAD) - 1 <= roll.target_roll <= 2000 * (1 + MATCH_ROLL_SPREAD)
+
+
+def test_a_much_stronger_card_always_wins_and_a_much_weaker_one_always_loses():
+    rng = random.Random(9)
+    assert all(roll_match(10_000, 100, rng).won for _ in range(200))
+    assert not any(roll_match(100, 10_000, rng).won for _ in range(200))
+
+
+def test_an_even_matchup_is_close_to_a_coin_flip():
+    rng = random.Random(21)
+    wins = sum(roll_match(1000, 1000, rng).won for _ in range(4000))
+    assert 0.45 < wins / 4000 < 0.56

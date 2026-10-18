@@ -3,6 +3,7 @@ from __future__ import annotations
 from django.db import IntegrityError
 
 from bd_models.models import Player
+from fcdex_3_1.fcdex_ext.currency import format_money
 from fcdex_3_1.fcdex_ext.tournament_loot import grant_prize_entry
 from fcdex_3_1.models import (
     Tournament,
@@ -49,7 +50,7 @@ async def count_eligible_participants(tournament_id: int, reward_id: int) -> int
 def format_reward_summary(reward: TournamentParticipationReward) -> str:
     label = reward.label or reward.get_prize_type_display()
     if reward.prize_type == TournamentPrizeType.COINS:
-        return f"`#{reward.pk}` **{label}** · **{reward.coins:,}** coins"
+        return f"`#{reward.pk}` **{label}** · **{format_money(reward.coins)}**"
     if reward.prize_type == TournamentPrizeType.BALL and reward.ball_id:
         return f"`#{reward.pk}` **{label}** · specific clubball **#{reward.ball_id}**"
     return f"`#{reward.pk}` **{label}** · random common clubball"

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import random
 from typing import TYPE_CHECKING
 
 import discord
@@ -10,12 +9,15 @@ from discord.ext import commands
 from ballsdex.core.utils.transformers import BallEnabledTransform, BallInstanceTransform
 from bd_models.models import Ball, BallInstance, Player
 from fcdex_3_1.fcdex_ext.bd_helpers import get_ball, instance_attack, instance_health
+from fcdex_3_1.fcdex_ext.currency import format_money
 from fcdex_3_1.fcdex_ext.match_logic import (
     MATCH_DAILY_LIMIT,
+    card_power,
     match_challenge_cost,
     match_daily_limit_message,
     match_daily_limit_reached,
     matches_used_today,
+    roll_match,
 )
 from fcdex_3_1.fcdex_ext.views import build_panel_layout
 from fcdex_3_1.models import MatchClaim
@@ -25,9 +27,7 @@ if TYPE_CHECKING:
 
 
 def _card_power(instance: BallInstance, ball: Ball) -> int:
-    attack = instance_attack(instance, ball)
-    health = instance_health(instance, ball)
-    return attack * 2 + health
+    return card_power(instance_attack(instance, ball), instance_health(instance, ball))
 
 
 class MatchCog(commands.GroupCog, group_name="match"):
@@ -65,19 +65,17 @@ class MatchCog(commands.GroupCog, group_name="match"):
 
         cost = await match_challenge_cost(clubball)
         player = await Player.objects.aget(pk=player.pk)
+        cannot_afford = (
+            f"You need **{format_money(cost, interaction.client)}** to challenge **{clubball.country}** "
+            f"(balance: **{format_money(player.money, interaction.client)}**)."
+        )
         if not player.can_afford(cost):
-            await interaction.response.send_message(
-                f"You need **{cost:,}** coins to challenge **{clubball.country}** (balance: **{player.money:,}**).",
-                ephemeral=True,
-            )
+            await interaction.response.send_message(cannot_afford, ephemeral=True)
             return
         try:
             await player.remove_money(cost)
         except ValueError:
-            await interaction.response.send_message(
-                f"You need **{cost:,}** coins to challenge **{clubball.country}** (balance: **{player.money:,}**).",
-                ephemeral=True,
-            )
+            await interaction.response.send_message(cannot_afford, ephemeral=True)
             return
 
         claim = await MatchClaim.objects.acreate(player=player)
@@ -89,15 +87,20 @@ class MatchCog(commands.GroupCog, group_name="match"):
             await interaction.response.send_message(match_daily_limit_message(), ephemeral=True)
             return
         attempts_left = MATCH_DAILY_LIMIT - used_after
+        receipt = (
+            f"-# Paid **{format_money(cost, interaction.client)}** · "
+            f"Balance: **{format_money(player.money, interaction.client)}** · "
+            f"**{attempts_left}**/{MATCH_DAILY_LIMIT} matches left today"
+        )
 
         user_ball = await get_ball(my_clubball)
         user_power = _card_power(my_clubball, user_ball)
-        target_power = clubball.attack * 2 + clubball.health
+        target_power = card_power(clubball.attack, clubball.health)
 
-        user_roll = int(user_power * random.uniform(0.8, 1.2))
-        target_roll = int(target_power * random.uniform(0.8, 1.2))
+        match = roll_match(user_power, target_power)
+        user_roll, target_roll = match.user_roll, match.target_roll
 
-        if user_roll >= target_roll:
+        if match.won:
             await BallInstance.objects.acreate(
                 ball=clubball, player=player, attack_bonus=0, health_bonus=0, server_id=interaction.guild_id
             )
@@ -105,16 +108,14 @@ class MatchCog(commands.GroupCog, group_name="match"):
                 f"🏆 **Match won!**\n"
                 f"Your **{user_ball.country}** scored **{user_roll}** vs **{clubball.country}** **{target_roll}**.\n"
                 f"You caught **{clubball.country}**!\n"
-                f"-# Paid **{cost:,}** coins · Balance: **{player.money:,}** · "
-                f"**{attempts_left}**/{MATCH_DAILY_LIMIT} matches left today"
+                f"{receipt}"
             )
         else:
             result_text = (
                 f"❌ **Match lost.**\n"
                 f"Your **{user_ball.country}** scored **{user_roll}** vs **{clubball.country}** **{target_roll}**.\n"
                 f"Better luck next time!\n"
-                f"-# Paid **{cost:,}** coins · Balance: **{player.money:,}** · "
-                f"**{attempts_left}**/{MATCH_DAILY_LIMIT} matches left today"
+                f"{receipt}"
             )
 
         layout = build_panel_layout(

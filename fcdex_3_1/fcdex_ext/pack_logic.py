@@ -11,6 +11,7 @@ import discord
 from django.utils import timezone
 
 from bd_models.models import Ball, BallInstance, Player, Special, balls
+from fcdex_3_1.fcdex_ext.currency import format_money
 from fcdex_3_1.models import PackClaim, PackType
 
 if TYPE_CHECKING:
@@ -35,7 +36,11 @@ PACK_STATUS_SUMMARIES = {
     PackType.EXCLUSIVE: "5 rare clubballs · 15k–45k coins · high stats · specials",
 }
 
-PACK_TYPE_LABELS = {PackType.DAILY: "Daily Pack", PackType.WEEKLY: "Weekly Pack", PackType.EXCLUSIVE: "Exclusive Pack"}
+PACK_TYPE_LABELS: dict[str, str] = {
+    PackType.DAILY: "Daily Pack",
+    PackType.WEEKLY: "Weekly Pack",
+    PackType.EXCLUSIVE: "Exclusive Pack",
+}
 
 
 @dataclass(frozen=True)
@@ -270,7 +275,7 @@ def format_pack_open_message(pack_label: str, coins: int, reward_lines: list[Pac
             tag = f" · **{line.special_name}**" if line.special_name else ""
             parts.append(f"**{line.country}** ({stats}){tag}")
         ball_text = "\n".join(parts)
-    return f"**+{coins:,}** coins\n**{len(reward_lines)}** clubball(s):\n{ball_text}"
+    return f"**+{format_money(coins)}**\n**{len(reward_lines)}** clubball(s):\n{ball_text}"
 
 
 def collection_card_file(ball: Ball, *, index: int = 1) -> discord.File | None:

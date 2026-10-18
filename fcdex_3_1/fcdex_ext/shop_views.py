@@ -9,6 +9,7 @@ from discord.ui import ActionRow, Button, Container, Select, Separator, TextDisp
 
 from ballsdex.core.discord import LayoutView
 from bd_models.models import Player
+from fcdex_3_1.fcdex_ext.currency import format_money
 from fcdex_3_1.fcdex_ext.discord_emoji import option_label_with_emoji
 from fcdex_3_1.fcdex_ext.shop_logic import format_bundle_line_async, list_shop_bundles, purchase_bundle
 from fcdex_3_1.fcdex_ext.views import truncate_text
@@ -38,7 +39,7 @@ class ShopBundleSelect(Select):
         self.page = page
         options: list[discord.SelectOption] = []
         for bundle in bundles[:25]:
-            desc = f"{bundle.price:,} coins"[:100]
+            desc = format_money(bundle.price)[:100]
             options.append(
                 discord.SelectOption(
                     label=option_label_with_emoji(bundle.name, bundle.emoji, default="🛒"),
@@ -95,7 +96,7 @@ async def build_shop_layout(owner_id: int, *, notice: str = "", page: int = 0) -
 
     layout = LayoutView(timeout=300)
     container = Container()
-    header = f"# 🛒 FCDex shop\n-# Your balance: **{player.money:,}** coins"
+    header = f"# 🛒 FCDex shop\n-# Your balance: **{format_money(player.money)}**"
     if bundles:
         page_range = f"{start + 1}-{min(end, len(bundles))}"
         header += f"\n-# Page **{page + 1}/{total_pages}** · Bundles **{page_range}** of **{len(bundles)}**"

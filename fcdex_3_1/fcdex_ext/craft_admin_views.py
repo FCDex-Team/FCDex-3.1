@@ -8,6 +8,7 @@ from discord.ui import ActionRow, Button, Container, Modal, Separator, TextDispl
 
 from ballsdex.core.discord import LayoutView
 from fcdex_3_1.fcdex_ext.bd_resolve import resolve_ball_input
+from fcdex_3_1.fcdex_ext.currency import format_money
 from fcdex_3_1.fcdex_ext.interaction_context import AdminContext, admin_context
 from fcdex_3_1.fcdex_ext.views import AdminHubBackRow, truncate_text
 from fcdex_3_1.models import SBCRecipe, SBCRecipeType
@@ -125,7 +126,7 @@ async def build_craft_admin_layout(owner_id: int, ctx: AdminContext, *, notice: 
             f"**{recipe.name}** — **{type_label}**\n"
             f"**{recipe.required_count}×** {recipe.required_ball.country} → "
             f"**{recipe.reward_ball.country}**"
-            + (f" · **+{recipe.reward_money:,}** coins" if recipe.reward_money else "")
+            + (f" · **+{format_money(recipe.reward_money)}**" if recipe.reward_money else "")
             + f"\n-# `#{recipe.pk}` · {'✅' if recipe.enabled else '🚫'}"
         )
     body = "\n\n".join(lines) if lines else "*No recipes — use **New recipe**.*"

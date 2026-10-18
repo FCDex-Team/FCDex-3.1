@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 
 from bd_models.models import BallInstance, Player
+from fcdex_3_1.fcdex_ext.currency import format_money
 from fcdex_3_1.models import ShopBundle, ShopBundleItem, ShopPurchase
 
 log = logging.getLogger("fcdex_3_1.shop")
@@ -23,7 +24,11 @@ async def format_bundle_line_async(bundle: ShopBundle) -> str:
     reward = ", ".join(lines) if lines else "*no items configured*"
     emoji = bundle.emoji or "🛒"
     desc = f"\n{bundle.description}" if bundle.description else ""
-    return f"{emoji} **{bundle.name}** — **{bundle.price:,}** coins\n{reward}{desc}"
+    return f"{emoji} **{bundle.name}** — **{format_money(bundle.price)}**\n{reward}{desc}"
+
+
+def _shortfall_message(price: int, player: Player) -> str:
+    return f"You need **{format_money(price)}** (balance: **{format_money(player.money)}**)."
 
 
 async def purchase_bundle(player: Player, bundle_id: int, *, guild_id: int | None) -> tuple[bool, str]:
@@ -39,14 +44,17 @@ async def purchase_bundle(player: Player, bundle_id: int, *, guild_id: int | Non
     if not items:
         return False, f"**{bundle.name}** has no rewards configured yet."
 
+    price = bundle.price
     player = await Player.objects.aget(pk=player.pk)
-    if not player.can_afford(bundle.price):
-        return False, f"You need **{bundle.price:,}** coins (balance: **{player.money:,}**)."
+    if not player.can_afford(price):
+        return False, _shortfall_message(price, player)
 
-    try:
-        await player.remove_money(bundle.price)
-    except ValueError:
-        return False, f"You need **{bundle.price:,}** coins (balance: **{player.money:,}**)."
+    # BallsDex refuses to move a zero amount, so a free bundle simply skips the payment
+    if price > 0:
+        try:
+            await player.remove_money(price)
+        except ValueError:
+            return False, _shortfall_message(price, player)
 
     granted: list[str] = []
     try:
@@ -65,12 +73,13 @@ async def purchase_bundle(player: Player, bundle_id: int, *, guild_id: int | Non
         await ShopPurchase.objects.acreate(player=player, bundle=bundle)
     except Exception:
         log.exception("Shop purchase delivery failed for player %s bundle %s — refunding.", player.pk, bundle.pk)
-        await player.add_money(bundle.price)
-        return False, "Purchase failed while delivering items — your coins were refunded."
+        if price > 0:
+            await player.add_money(price)
+        return False, "Purchase failed while delivering items — you were not charged."
 
     player = await Player.objects.aget(pk=player.pk)
     return True, (
-        f"Purchased **{bundle.name}** for **{bundle.price:,}** coins!\n"
+        f"Purchased **{bundle.name}** for **{format_money(price)}**!\n"
         f"Received: {', '.join(granted)}\n"
-        f"-# Balance: **{player.money:,}** coins"
+        f"-# Balance: **{format_money(player.money)}**"
     )
