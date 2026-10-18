@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import random
 from collections import defaultdict
+from collections.abc import Sequence
 
 from bd_models.models import Ball, Special, balls
 from fcdex_3_1.fcdex_ext.rarity_data import (
@@ -16,6 +18,24 @@ async def fetch_all_balls() -> list[Ball]:
     if balls:
         return list(balls.values())
     return [ball async for ball in Ball.objects.all()]
+
+
+def pick_common_ball(all_balls: Sequence[Ball], rng: random.Random | None = None) -> Ball | None:
+    """A random spawnable clubball from the commoner half of the dex, weighted by spawn weight.
+
+    `rarity` is the spawn weight, so a higher value means a more common clubball. The rarest tier is never
+    handed out as a "common" prize unless every clubball shares the same rarity.
+    """
+    spawnable = [ball for ball in all_balls if ball.enabled]
+    if not spawnable:
+        return None
+    source = rng or random
+    median = sorted(ball.rarity for ball in spawnable)[len(spawnable) // 2]
+    pool = [ball for ball in spawnable if ball.rarity >= median]
+    weights = [max(float(ball.rarity), 0.0) for ball in pool]
+    if sum(weights) <= 0:
+        return source.choice(pool)
+    return source.choices(pool, weights=weights, k=1)[0]
 
 
 def balls_for_category(all_balls: list[Ball], category: RarityCategory) -> list[RarityBallInfo]:

@@ -3,18 +3,14 @@ from __future__ import annotations
 import random
 
 from bd_models.models import Ball, BallInstance, Player
+from fcdex_3_1.fcdex_ext.rarity_logic import fetch_all_balls, pick_common_ball
 from fcdex_3_1.models import TournamentMatch, TournamentMatchPrize, TournamentParticipationReward, TournamentPrizeType
 
 PrizeEntry = TournamentMatchPrize | TournamentParticipationReward
 
 
 async def _pick_random_common_ball() -> Ball | None:
-    enabled = [ball async for ball in Ball.objects.filter(enabled=True)]
-    if not enabled:
-        return None
-    min_rarity = min(ball.rarity for ball in enabled)
-    pool = [ball for ball in enabled if ball.rarity == min_rarity]
-    return random.choice(pool)
+    return pick_common_ball(await fetch_all_balls())
 
 
 async def load_match_prizes(match: TournamentMatch) -> list[TournamentMatchPrize]:
