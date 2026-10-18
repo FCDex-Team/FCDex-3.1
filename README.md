@@ -53,6 +53,27 @@ Legacy & Main groups · grand final is **Legacy vs Main** semifinal winners.
 | `/tournament match` | Pending matches · **Start battle** · claim |
 | `/tournament bet` | Wager on match outcomes |
 
+**Join with one tap** — `/tournament manage` → **Announce** posts a public signup message with **Join Legacy**,
+**Join Main**, **Leave** and **Details** buttons. Players join without typing a command, and the buttons keep working
+after restarts.
+
+### 🎲 Special spawns
+
+Some natural spawns are swapped for a rarer variant. Rates are tuned in `/fcdex admin` → **Spawns** (bot owners) or in
+the Django admin under **Spawn events config**.
+
+| Spawn | What happens |
+| ----- | ------------ |
+| **Twin spawn** | Two clubballs appear side by side. Pick one, name it, and the first correct guess catches that one — the other gets away. |
+| **Match spawn** | Rare. Instead of guessing a name, play a match with one of your clubballs. Everyone gets one try, the first win earns a **rarer** clubball than the one shown. |
+
+| Command | Description |
+| ------- | ----------- |
+| `/fcdex spawn kind:<twin\|match>` | Post one right now to test it (bot owners) |
+
+Catches go through BallsDex's own catch pipeline, so specials, stat bonuses, hooks, events and metrics behave exactly
+like a normal catch. Defaults: twin **10%**, match **2%** of natural spawns, match difficulty **110%**.
+
 ### ✨ Merge · 🏅 Achievements · 📊 Rarity · 🏆 Leaderboard
 
 - **Merge** — 7-tier forge, same clubball only (`/merge`)
@@ -83,7 +104,7 @@ All admin panels use Components v2 and reply **ephemeral**.
 
 ```toml
 [[ballsdex.packages]]
-location = "git+https://github.com/FCDex-Team/FCDex-3.1.git@3.1.6"
+location = "git+https://github.com/FCDex-Team/FCDex-3.1.git@3.1.7"
 path = "fcdex_3_1"
 enabled = true
 ```
@@ -94,15 +115,20 @@ docker compose build && docker compose up -d
 
 ### Upgrading
 
-- Set `path = "fcdex_3_1"` and pin the latest tag (e.g. **`@3.1.6`**).
-- Run migrations through **`0020`** (battle reward daily cap).
+- Set `path = "fcdex_3_1"` and pin the latest tag (e.g. **`@3.1.7`**).
+- Run migrations through **`0022`** (special spawn settings). `0021` only syncs migration metadata.
 - Django app **label stays `fcdex_3_0`** for database compatibility.
-- Enable economy: admin **Settings** → set **`currency_name`** (e.g. `coin`).
+- Enable economy: admin **Settings** → set **`currency_name`** (e.g. `coin`). Amounts follow your currency name,
+  plural, symbol and emoji settings.
 
 ## Requirements
 
-- BallsDex **V3** (3.0.0+)
+- BallsDex **V3** (3.0.0+). Checked against **3.1.0**, **3.2.0** and the current `v3` branch.
 - Python **3.12+**
+
+On BallsDex builds that have the events and hooks API (newer than 3.2.0), FCDex honours other packages' `spawn_check`
+and `pre_catch` hooks and announces its spawns and catches through the standard events. Older builds work too, those
+extras are simply skipped.
 
 ## License
 
