@@ -16,6 +16,7 @@ from fcdex_3_1.fcdex_ext.merge_admin_views import build_merge_admin_layout
 from fcdex_3_1.fcdex_ext.pack_admin_views import build_pack_admin_layout
 from fcdex_3_1.fcdex_ext.quest_admin_views import build_quest_admin_layout
 from fcdex_3_1.fcdex_ext.shop_admin_views import build_shop_admin_layout
+from fcdex_3_1.fcdex_ext.spawn_admin_views import build_spawn_admin_layout
 from fcdex_3_1.fcdex_ext.tournament_admin_views import build_tournament_admin_layout
 from fcdex_3_1.fcdex_ext.views import build_panel_layout, truncate_text
 
@@ -106,6 +107,14 @@ class AdminHubControlsRow2(ActionRow):
         layout = await build_tournament_admin_layout(self.owner_id, ctx)
         await interaction.response.edit_message(view=layout)
 
+    @button(label="Spawns", style=discord.ButtonStyle.primary, emoji="🎲")
+    async def spawns(self, interaction: Interaction, button: Button):
+        if interaction.user.id != self.owner_id:
+            await interaction.response.send_message("This panel is not yours.", ephemeral=True)
+            return
+        layout = await build_spawn_admin_layout(self.owner_id)
+        await interaction.response.edit_message(view=layout)
+
     @button(label="Owners", style=discord.ButtonStyle.secondary, emoji="🔍")
     async def owners(self, interaction: Interaction, button: Button):
         if interaction.user.id != self.owner_id:
@@ -147,7 +156,8 @@ def build_admin_hub_layout(owner_id: int, guild_id: int | None, channel_id: int)
                 "-# **Merge** — global quota, premium bonus & per-player overrides.\n"
                 "-# **Packs** — grant **Exclusive Pack** (admin-only; daily/weekly are `/pack`).\n"
                 "-# **Boss** — start raids here or in any channel/DM.\n"
-                "-# **Tournament** — set global caps for `/tournament manage`."
+                "-# **Tournament** — set global caps for `/tournament manage`.\n"
+                "-# **Spawns** — twin & match spawn rates (bot owners)."
             )
         )
     )

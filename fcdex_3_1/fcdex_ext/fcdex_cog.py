@@ -10,6 +10,7 @@ from ballsdex.core.utils.transformers import BallEnabledTransform
 from bd_models.models import Ball, Player, balls
 from fcdex_3_1.fcdex_ext.admin_hub_views import build_admin_hub_layout
 from fcdex_3_1.fcdex_ext.boss_views import build_boss_player_layout
+from fcdex_3_1.fcdex_ext.currency import currency_noun
 from fcdex_3_1.fcdex_ext.leaderboard_logic import (
     LeaderboardMetric,
     LeaderboardScope,
@@ -62,10 +63,12 @@ class FcdexCog(commands.GroupCog, group_name="fcdex"):
                 "`/battle random` — instant random 5v5\n"
                 "`/battle all` — every clubball you own · `skip_commentary:true`",
                 "### 🏟️ Tournaments\n`/tournament view` · `/tournament start` · `/tournament match` · `/tournament bet`",
-                "### ⚽ Club match\n`/match challenge clubball:<name>` — try to win a rare clubball",
+                "### ⚽ Club match\n`/match challenge clubball:<name>` — try to win a rare clubball\n"
+                "-# **Twin spawns** (two clubballs, catch one) and **match spawns** (win a match for a rarer "
+                "clubball) can replace natural spawns · rates in `/fcdex admin` → **Spawns**",
                 "### ✨ Merge · 🏅 Achievements · 📊 Rarity · 🏆 Leaderboard",
                 "### 📋 List regime\n`/fcdex list regime:<name>` — browse clubballs by regime",
-                "### 🛒 Shop\n`/fcdex shop` — buy bundles with coins",
+                f"### 🛒 Shop\n`/fcdex shop` — buy bundles with {currency_noun(2)}",
                 "### 👑 Boss · 📜 Quests\n`/fcdex boss` — guild raid · `/fcdex quests` · `/fcdex quest claim`",
                 "### 🛡️ Admin\n`/fcdex admin` — shop, craft, quests, achievements, merge, boss, "
                 "owners (Manage Server · ephemeral)\n"
@@ -274,6 +277,42 @@ class FcdexCog(commands.GroupCog, group_name="fcdex"):
             await interaction.followup.send(view=layout)  # pyright: ignore[reportArgumentType]
         else:
             await interaction.response.send_message(view=layout)  # pyright: ignore[reportArgumentType]
+
+    @app_commands.command(name="spawn", description="Post a twin or match spawn right now (bot owners only)")
+    @app_commands.describe(kind="Which special spawn to post", channel="Where to post it (default: this channel)")
+    @app_commands.choices(
+        kind=[
+            app_commands.Choice(name="Twin spawn (two clubballs, catch one)", value="twin"),
+            app_commands.Choice(name="Match spawn (win a match for a rarer clubball)", value="match"),
+        ]
+    )
+    async def spawn(
+        self,
+        interaction: discord.Interaction,
+        kind: app_commands.Choice[str],
+        channel: discord.TextChannel | None = None,
+    ):
+        if not await interaction.client.is_owner(interaction.user):
+            await interaction.response.send_message("Only the bot owners can force a spawn.", ephemeral=True)
+            return
+        target = channel or interaction.channel
+        if not isinstance(target, discord.TextChannel):
+            await interaction.response.send_message("Pick a text channel in a server.", ephemeral=True)
+            return
+
+        from fcdex_3_1.fcdex_ext.match_spawn import spawn_match
+        from fcdex_3_1.fcdex_ext.twin_spawn import spawn_twin
+
+        await interaction.response.defer(ephemeral=True)
+        post = spawn_twin if kind.value == "twin" else spawn_match
+        posted = await post(self.bot, target, algo="fcdex:admin")
+        if posted:
+            await interaction.followup.send(f"Posted a {kind.value} spawn in {target.mention}.", ephemeral=True)
+        else:
+            await interaction.followup.send(
+                "Could not post it. Check the bot's permissions there and that enough clubballs can spawn.",
+                ephemeral=True,
+            )
 
     @app_commands.command(name="shop", description="Browse coin shop bundles and purchase rewards")
     @app_commands.describe(ephemeral="Show the shop only to you (default: public)")

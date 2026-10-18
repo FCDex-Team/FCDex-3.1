@@ -14,6 +14,7 @@ from .models import (
     ShopBundle,
     ShopBundleItem,
     ShopPurchase,
+    SpawnEventConfig,
     Tournament,
     TournamentBet,
     TournamentConfig,
@@ -246,6 +247,17 @@ class TournamentConfigAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):
         return not TournamentConfig.objects.exists()
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(SpawnEventConfig)
+class SpawnEventConfigAdmin(admin.ModelAdmin):
+    list_display = ("twin_enabled", "twin_chance", "match_enabled", "match_chance", "match_difficulty")
+
+    def has_add_permission(self, request):
+        return not SpawnEventConfig.objects.exists()
 
     def has_delete_permission(self, request, obj=None):
         return False

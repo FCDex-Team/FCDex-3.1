@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 from bd_models.models import Ball, BallInstance, Player
@@ -318,9 +320,15 @@ class TournamentConfig(models.Model):
 class MergeLog(models.Model):
     player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name="merge_logs")
     player_id: int
-    source_ball1 = models.ForeignKey(BallInstance, on_delete=models.SET_NULL, null=True, related_name="merge_source1")
-    source_ball2 = models.ForeignKey(BallInstance, on_delete=models.SET_NULL, null=True, related_name="merge_source2")
-    result_ball = models.ForeignKey(BallInstance, on_delete=models.SET_NULL, null=True, related_name="merge_results")
+    source_ball1 = models.ForeignKey(
+        BallInstance, on_delete=models.SET_NULL, null=True, blank=True, related_name="merge_source1"
+    )
+    source_ball2 = models.ForeignKey(
+        BallInstance, on_delete=models.SET_NULL, null=True, blank=True, related_name="merge_source2"
+    )
+    result_ball = models.ForeignKey(
+        BallInstance, on_delete=models.SET_NULL, null=True, blank=True, related_name="merge_results"
+    )
     merge_level = models.PositiveSmallIntegerField(default=1)
     source_ids = models.JSONField(default=list, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -382,7 +390,7 @@ class PackClaim(models.Model):
 
     class Meta:
         ordering = ("-claimed_at",)
-        indexes = [models.Index(fields=("player", "pack_type", "-claimed_at"))]
+        indexes = [models.Index(fields=("player", "pack_type", "-claimed_at"), name="fcdex_pack_player_type_idx")]
 
     def __str__(self) -> str:
         return f"{self.player_id} · {self.pack_type}"
@@ -395,7 +403,7 @@ class MatchClaim(models.Model):
 
     class Meta:
         ordering = ("-played_at",)
-        indexes = [models.Index(fields=("player", "-played_at"))]
+        indexes = [models.Index(fields=("player", "-played_at"), name="fcdex_match_player_played_idx")]
 
     def __str__(self) -> str:
         return f"{self.player_id} · match @ {self.played_at:%Y-%m-%d %H:%M}"
@@ -408,10 +416,50 @@ class BattleRewardClaim(models.Model):
 
     class Meta:
         ordering = ("-granted_at",)
-        indexes = [models.Index(fields=("player", "-granted_at"))]
+        indexes = [models.Index(fields=("player", "-granted_at"), name="fcdex_battlereward_player_idx")]
 
     def __str__(self) -> str:
         return f"{self.player_id} · battle reward @ {self.granted_at:%Y-%m-%d %H:%M}"
+
+
+class SpawnEventConfig(models.Model):
+    """Singleton row (pk=1) tuning the rare spawn variants that can replace a natural spawn."""
+
+    twin_enabled = models.BooleanField(
+        default=True, help_text="Twin spawn: two clubballs appear side by side and only one of them can be caught."
+    )
+    twin_chance = models.FloatField(
+        default=10.0,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        help_text="Percent of natural spawns that become a twin spawn (0-100).",
+    )
+    match_enabled = models.BooleanField(
+        default=True, help_text="Match spawn: win a match against the spawned clubball to earn a rarer one."
+    )
+    match_chance = models.FloatField(
+        default=2.0,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        help_text="Percent of natural spawns that become a match spawn (0-100). Keep this low, the prize is rare.",
+    )
+    match_difficulty = models.PositiveSmallIntegerField(
+        default=110,
+        validators=[MinValueValidator(10), MaxValueValidator(1000)],
+        help_text="Opponent strength as a percent of the spawned clubball's base stats (100 = equal, higher = harder).",
+    )
+
+    class Meta:
+        verbose_name = "Spawn events config"
+        verbose_name_plural = "Spawn events config"
+
+    def __str__(self) -> str:
+        return "Spawn events config"
+
+    def clean(self) -> None:
+        super().clean()
+        twin = self.twin_chance if self.twin_enabled else 0
+        match = self.match_chance if self.match_enabled else 0
+        if twin + match > 100:
+            raise ValidationError("Twin and match chances together cannot exceed 100%.")
 
 
 class SBCRecipeType(models.TextChoices):

@@ -13,6 +13,7 @@ async def setup(bot: "BallsDexBot"):
     from fcdex_3_1.fcdex_ext.merge_cog import MergeCog
     from fcdex_3_1.fcdex_ext.merge_special import bootstrap_merge_specials
     from fcdex_3_1.fcdex_ext.pack_cog import PackCog
+    from fcdex_3_1.fcdex_ext.spawn_cog import SpawnEventsCog
     from fcdex_3_1.fcdex_ext.tournament_cog import TournamentCog
 
     await bootstrap_merge_specials(bot)
@@ -24,3 +25,4 @@ async def setup(bot: "BallsDexBot"):
     await bot.add_cog(PackCog(bot))
     await bot.add_cog(AchievementCog(bot))
     await bot.add_cog(TournamentCog(bot))
+    await bot.add_cog(SpawnEventsCog(bot))
