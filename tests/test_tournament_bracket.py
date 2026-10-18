@@ -25,10 +25,8 @@ def test_player_label_shows_pending_player():
 
 def test_player_label_marks_winner_and_loser():
     match = _match(winner_id=1)
-    assert "**<@101>**" in _player_label(match, "player1")  # type: ignore[arg-type]
-    assert "✓" in _player_label(match, "player1")  # type: ignore[arg-type]
-    assert "~~<@102>~~" in _player_label(match, "player2")  # type: ignore[arg-type]
-    assert "✗" in _player_label(match, "player2")  # type: ignore[arg-type]
+    assert _player_label(match, "player1") == "<@101> ✓"  # type: ignore[arg-type]
+    assert _player_label(match, "player2") == "<@102> ✗"  # type: ignore[arg-type]
 
 
 def test_winner_label_shows_pending():

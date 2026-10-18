@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -23,7 +24,7 @@ def test_cap_error_returns_none_when_equal_to_cap():
     assert cap_error(12, 12, "Max participants") is None
 
 
-async def test_get_tournament_config_returns_singleton():
+def test_get_tournament_config_returns_singleton():
     mock_manager = MagicMock()
     mock_manager.aget_or_create = AsyncMock(return_value=(SimpleNamespace(max_participants_cap=12), True))
 
@@ -31,7 +32,7 @@ async def test_get_tournament_config_returns_singleton():
         objects = mock_manager
 
     with patch.object(tournament_config, "TournamentConfig", _FakeConfig):
-        config = await get_tournament_config()
+        config = asyncio.run(get_tournament_config())
 
     assert config.max_participants_cap == 12
     mock_manager.aget_or_create.assert_awaited_once_with(pk=1)

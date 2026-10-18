@@ -51,6 +51,102 @@ def _install_bd_models_stub() -> None:
 _install_bd_models_stub()
 
 
+def _install_ballsdex_stub() -> None:
+    """Minimal `ballsdex.core.discord` so UI modules import without the host installed.
+
+    The real classes add blacklist checks and tracing on top of discord.py; here they are plain discord.py views.
+    """
+    try:
+        import ballsdex  # noqa: F401
+
+        return
+    except ImportError:
+        pass
+    try:
+        import discord.ui as ui
+    except ImportError:
+        return
+
+    class _AuthorMixin:
+        def restrict_author(self, discord_id: int) -> None:
+            self.discord_id = discord_id
+
+    class LayoutView(_AuthorMixin, ui.LayoutView):
+        pass
+
+    class View(_AuthorMixin, ui.View):
+        pass
+
+    class Container(ui.Container):
+        pass
+
+    class Modal(ui.Modal):
+        pass
+
+    core_discord = ModuleType("ballsdex.core.discord")
+    core_discord.LayoutView = LayoutView  # type: ignore[attr-defined]
+    core_discord.View = View  # type: ignore[attr-defined]
+    core_discord.Container = Container  # type: ignore[attr-defined]
+    core_discord.Modal = Modal  # type: ignore[attr-defined]
+    core = ModuleType("ballsdex.core")
+    core.__path__ = []  # type: ignore[attr-defined]
+    core.discord = core_discord  # type: ignore[attr-defined]
+    package = ModuleType("ballsdex")
+    package.__path__ = []  # type: ignore[attr-defined]
+    package.core = core  # type: ignore[attr-defined]
+    sys.modules.setdefault("ballsdex", package)
+    sys.modules.setdefault("ballsdex.core", core)
+    sys.modules.setdefault("ballsdex.core.discord", core_discord)
+
+
+_install_ballsdex_stub()
+
+
+def _install_host_settings_stub() -> None:
+    """Minimal `settings.models` (the BallsDex settings singleton) for modules that read collectible names."""
+    try:
+        import settings.models  # noqa: F401
+
+        return
+    except ImportError:
+        pass
+
+    class _PromptType(StrEnum):
+        SPAWN = "spawn"
+        CATCH = "catch"
+        WRONG = "wrong"
+        SLOW = "slow"
+
+    class _PromptMessage:
+        PromptType = _PromptType
+
+    class _HostSettings(SimpleNamespace):
+        def get_formatted_message(self, *, category, mention, model, bot, **extra) -> str:
+            return f"[{category.value}] {mention}"
+
+    host = _HostSettings(
+        collectible_name="clubball",
+        plural_collectible_name="clubballs",
+        currency_name=None,
+        currency_plural=None,
+        currency_symbol=None,
+        currency_symbol_before=False,
+        max_attack_bonus=20,
+        max_health_bonus=20,
+    )
+    models = ModuleType("settings.models")
+    models.settings = host  # type: ignore[attr-defined]
+    models.PromptMessage = _PromptMessage  # type: ignore[attr-defined]
+    package = ModuleType("settings")
+    package.__path__ = []  # type: ignore[attr-defined]
+    package.models = models  # type: ignore[attr-defined]
+    sys.modules.setdefault("settings", package)
+    sys.modules.setdefault("settings.models", models)
+
+
+_install_host_settings_stub()
+
+
 class _TournamentStatus:
     REGISTRATION = "registration"
     GROUP_STAGE = "group_stage"
@@ -66,6 +162,13 @@ class _TournamentGroup:
     def __init__(self, value: str) -> None:
         self.value = value
         self.label = value.title()
+
+
+class _TournamentRound:
+    GROUP = "group"
+    QUARTERFINAL = "quarterfinal"
+    SEMIFINAL = "semifinal"
+    FINAL = "final"
 
 
 class _TournamentPrizeType:
@@ -124,7 +227,7 @@ class _ModelsStub(ModuleType):
         self.TournamentRegistration = object
         self.TournamentBet = object
         self.TournamentGroup = _TournamentGroup
-        self.TournamentRound = object
+        self.TournamentRound = _TournamentRound
         self.TournamentMatchPrize = object
         self.TournamentPrizeType = _TournamentPrizeType
         self.TournamentParticipationReward = _FcdexDummyModel
@@ -140,6 +243,8 @@ class _ModelsStub(ModuleType):
         self.PackClaim = object
         self.MatchClaim = object
         self.BattleRewardClaim = object
+        self.SpawnEventConfig = object
+        self.TournamentConfig = object
         self.QuestDefinition = object
         self.QuestHook = _QuestHook
         self.PlayerQuestProgress = object
