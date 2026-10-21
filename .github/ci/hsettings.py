@@ -1,3 +1,4 @@
+# ruff: noqa
 """CI settings: BallsDex local settings plus sqlite support for its Postgres-only legacy migration guard."""
 
 import importlib
@@ -17,3 +18,8 @@ _mod = importlib.import_module("bd_models.migrations.0003_delete_ball_delete_bal
 for _op in _mod.Migration.operations:
     if isinstance(_op, RunPython) and getattr(_op.code, "__name__", "") == "execute_aerich_migration_check":
         _op.code = lambda apps, schema_editor: None
+
+# older hosts crash in AppConfig.ready() while loading settings from a database that has no tables yet
+from settings import apps as _settings_apps
+
+_settings_apps.SettingsConfig.ready = lambda self: None

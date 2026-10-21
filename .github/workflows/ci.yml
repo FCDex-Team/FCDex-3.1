@@ -42,8 +42,9 @@ jobs:
           python-version: "3.14"
       - name: Install BallsDex dependencies
         run: |
-          pip install "django==6.0.0" django-allow-cidr django-nonrelated-inlines django-admin-autocomplete-filter \
-            django-admin-action-forms django-admin-inline-paginator dj-database-url social-auth-app-django \
+          pip install "django==6.0.0" django-allow-cidr==0.8.0 django-nonrelated-inlines==0.2 \
+            django-admin-autocomplete-filter==0.7.1 django-admin-action-forms==2.2.0 \
+            django-admin-inline-paginator==0.4.0 dj-database-url==3.0.1 social-auth-app-django==5.6.0 \
             prometheus-client rich python-dateutil Pillow pyyaml cachetools "sentry-sdk[django]" aiohttp
           pip install "discord.py @ git+https://github.com/Rapptz/discord.py.git@c342db853486ef6e26d72b10bf901e951c4b4d8e"
       - name: Migrations apply and match models.py
@@ -55,6 +56,6 @@ jobs:
           BALLSDEX_LOG_DIR: ${{ github.workspace }}
           FC_UPSTREAM: ${{ github.workspace }}/host
         run: |
-          python -m django check
           python -m django migrate
+          python -m django check
           python -m django makemigrations --check --dry-run
