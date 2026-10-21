@@ -215,6 +215,18 @@ class _QuestHook:
     MERGE_ONCE = "merge_once"
 
 
+class _PassTrack(StrEnum):
+    NORMAL = "normal"
+    PREMIUM = "premium"
+
+
+class _PassRewardType(StrEnum):
+    NONE = "none"
+    COINS = "coins"
+    BALL = "ball"
+    RANDOM_COMMON = "random_common"
+
+
 class _ModelsStub(ModuleType):
     Tournament: type
     TournamentStatus: type[_TournamentStatus]
@@ -252,6 +264,13 @@ class _ModelsStub(ModuleType):
         self.ShopBundle = object
         self.ShopBundleItem = object
         self.ShopPurchase = object
+        self.PassTrack = _PassTrack
+        self.PassRewardType = _PassRewardType
+        self.PassSeason = object
+        self.PassLevelReward = object
+        self.PassSeasonClub = object
+        self.PlayerPass = object
+        self.PassRewardClaim = object
 
 
 _models_stub = _ModelsStub()

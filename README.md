@@ -40,6 +40,8 @@ Admins without a custom admin-panel domain can manage recipes in **`/fcdex admin
 | `/battle challenge @user` | Lineup panel (max 5) — **Random 5**, Strongest, Lock |
 | `/battle random @user` | Instant random 5v5 (no panel) |
 | `/battle all @user` | Uses **every** clubball you own · `skip_commentary:true` for quick results |
+
+The winner of a `/battle challenge` earns a random clubball (no coins), up to **8 rewarded wins per day**.
 | `/battle card` | Add/remove a card from your active lineup |
 
 ### 🏟️ Tournaments
@@ -73,6 +75,29 @@ the Django admin under **Spawn events config**.
 
 Catches go through BallsDex's own catch pipeline, so specials, stat bonuses, hooks, events and metrics behave exactly
 like a normal catch. Defaults: twin **10%**, match **2%** of natural spawns, match difficulty **110%**.
+
+### 🎟️ Club pass
+
+Seasonal battle-pass: earn xp, level up to **50** and claim coins or clubballs on every reward level.
+
+| Command | Description |
+| ------- | ----------- |
+| `/club pass` | Season, level, xp bar, rewards per level (paged) · **Claim rewards** takes everything unlocked |
+| `/fcdex admin` → **Club Pass** | Start a season (name + months until it ends), set any level reward, add season clubs, grant premium |
+
+- **Seasons** — one at a time, ends on its end date. A new season is seeded with editable defaults: level 1 a random
+  common clubball, levels 2-5 nothing, level 6 1,000 coins, then a prize every 5 levels with growing coins, level 50 a
+  random common clubball. The **premium** track has the same shape with 3x the coins.
+- **Reward types** — nothing, coins, a specific clubball, or a random common clubball. Claims are recorded first (unique
+  per player/season/level/track) so double clicks never pay twice.
+- **Xp to level up** (per level) — Premium: L1-10 100 · L11-19 250 · L20-29 400 · L30-39 650 · L40-45 900 · L46-49 1,600
+  · L50 2,000. Normal: L1-10 350 · L11-29 650 · L30-39 900 · L40-45 1,600 · L46-49 2,100 · L50 2,500.
+- **Premium** is a flag an admin sets per player (no payment flow). Premium players use the faster table and can claim
+  both tracks.
+- **Xp sources** — every catch pays 25 xp (commonest) up to 300 xp (rarest), +50% for the season's clubs (twin and
+  match spawn catches included). Other features pay xp through `club_pass_logic.grant_pass_xp(player, amount)`.
+  Catch xp uses the `on_ballsdex_ball_caught` event when the host sends it and otherwise a small wrapper around
+  `BallSpawnView.catch_ball` (removed on unload, one payment per clubball). A host that has neither pays no catch xp.
 
 ### ✨ Merge · 🏅 Achievements · 📊 Rarity · 🏆 Leaderboard
 
@@ -116,7 +141,8 @@ docker compose build && docker compose up -d
 ### Upgrading
 
 - Set `path = "fcdex_3_1"` and pin the latest tag (e.g. **`@3.1.7`**).
-- Run migrations through **`0022`** (special spawn settings). `0021` only syncs migration metadata.
+- Run migrations through **`0022`** (special spawn settings), **`0024`** adds the club pass. `0021` only syncs
+  migration metadata.
 - Django app **label stays `fcdex_3_0`** for database compatibility.
 - Enable economy: admin **Settings** → set **`currency_name`** (e.g. `coin`). Amounts follow your currency name,
   plural, symbol and emoji settings.

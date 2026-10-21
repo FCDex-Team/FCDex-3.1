@@ -7,6 +7,7 @@ if TYPE_CHECKING:
 async def setup(bot: "BallsDexBot"):
     from fcdex_3_1.fcdex_ext.achievement_cog import AchievementCog
     from fcdex_3_1.fcdex_ext.battle_cog import BattleCog
+    from fcdex_3_1.fcdex_ext.club_pass_cog import ClubPassCog
     from fcdex_3_1.fcdex_ext.craft_cog import CraftCog
     from fcdex_3_1.fcdex_ext.fcdex_cog import FcdexCog
     from fcdex_3_1.fcdex_ext.match_cog import MatchCog
@@ -26,3 +27,4 @@ async def setup(bot: "BallsDexBot"):
     await bot.add_cog(AchievementCog(bot))
     await bot.add_cog(TournamentCog(bot))
     await bot.add_cog(SpawnEventsCog(bot))
+    await bot.add_cog(ClubPassCog(bot))

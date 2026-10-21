@@ -66,6 +66,8 @@ class FcdexCog(commands.GroupCog, group_name="fcdex"):
                 "### ⚽ Club match\n`/match challenge clubball:<name>` — try to win a rare clubball\n"
                 "-# **Twin spawns** (two clubballs, catch one) and **match spawns** (win a match for a rarer "
                 "clubball) can replace natural spawns · rates in `/fcdex admin` → **Spawns**",
+                "### 🎟️ Club pass\n`/club pass` — level up to 50 for coins & clubballs · seasons set in "
+                "`/fcdex admin` → **Club Pass**",
                 "### ✨ Merge · 🏅 Achievements · 📊 Rarity · 🏆 Leaderboard",
                 "### 📋 List regime\n`/fcdex list regime:<name>` — browse clubballs by regime",
                 f"### 🛒 Shop\n`/fcdex shop` — buy bundles with {currency_noun(2)}",

@@ -1,22 +1,18 @@
 from __future__ import annotations
 
 import logging
-import random
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from django.utils import timezone
 
 from bd_models.models import Player
-from fcdex_3_1.fcdex_ext.currency import currency_noun, format_money
 from fcdex_3_1.fcdex_ext.pack_logic import PackRewardLine, grant_random_clubball
 from fcdex_3_1.models import BattleRewardClaim
 
 log = logging.getLogger("fcdex_3_1.battle.rewards")
 
-BATTLE_CHALLENGE_COINS_MIN = 200
-BATTLE_CHALLENGE_COINS_MAX = 400
-BATTLE_REWARD_DAILY_LIMIT = 10
+BATTLE_REWARD_DAILY_LIMIT = 8
 
 
 def _today_start(now: datetime) -> datetime:
@@ -40,26 +36,22 @@ def battle_reward_daily_limit_message(*, limit: int = BATTLE_REWARD_DAILY_LIMIT)
     minutes = rem // 60
     return (
         f"You've hit today's battle-reward limit (**{limit}** per day) — the fight still counts, "
-        f"but no {currency_noun(2)}/clubball this time. Resets in **{hours}h {minutes}m** (UTC midnight)."
+        f"but no clubball reward this time. Resets in **{hours}h {minutes}m** (UTC midnight)."
     )
 
 
 @dataclass(frozen=True)
 class BattleChallengeRewardResult:
-    coins: int
     ball_line: PackRewardLine | None
     message: str
 
 
-def format_battle_challenge_reward_message(coins: int, ball_line: PackRewardLine | None) -> str:
-    parts = [f"🎁 **Victory reward** · **+{format_money(coins)}**"]
-    if ball_line:
-        stats = f"`{ball_line.attack_bonus:+}%` ATK · `{ball_line.health_bonus:+}%` HP"
-        tag = f" · **{ball_line.special_name}**" if ball_line.special_name else ""
-        parts.append(f"**{ball_line.country}** ({stats}){tag}")
-    else:
-        parts.append("-# No clubball granted (dex empty)")
-    return "\n".join(parts)
+def format_battle_challenge_reward_message(ball_line: PackRewardLine | None) -> str:
+    if ball_line is None:
+        return "🎁 **Victory reward**\n-# No clubball granted (dex empty)"
+    stats = f"`{ball_line.attack_bonus:+}%` ATK · `{ball_line.health_bonus:+}%` HP"
+    tag = f" · **{ball_line.special_name}**" if ball_line.special_name else ""
+    return f"🎁 **Victory reward** · **{ball_line.country}** ({stats}){tag}"
 
 
 async def grant_battle_challenge_reward(
@@ -69,16 +61,17 @@ async def grant_battle_challenge_reward(
     if battle_reward_daily_limit_reached(used_today):
         return False, battle_reward_daily_limit_message()
 
-    coins = 0
-    ball_line: PackRewardLine | None = None
+    # claim the daily slot first so two simultaneous wins cannot both slip past the limit
+    claim = await BattleRewardClaim.objects.acreate(player=player)
+    if await battle_rewards_used_today(player) > BATTLE_REWARD_DAILY_LIMIT:
+        await claim.adelete()
+        return False, battle_reward_daily_limit_message()
     try:
-        coins = random.randint(BATTLE_CHALLENGE_COINS_MIN, BATTLE_CHALLENGE_COINS_MAX)
-        await player.add_money(coins)
         ball_line = await grant_random_clubball(player, guild_id=guild_id)
-        await BattleRewardClaim.objects.acreate(player=player)
     except Exception:
         log.exception("Battle challenge reward failed for player %s", player.pk)
-        return False, f"Could not grant match rewards — contact staff if {currency_noun(2)} or clubballs are missing."
+        await claim.adelete()
+        return False, "Could not grant the victory reward — contact staff if a clubball is missing."
 
-    message = format_battle_challenge_reward_message(coins, ball_line)
-    return True, BattleChallengeRewardResult(coins=coins, ball_line=ball_line, message=message)
+    message = format_battle_challenge_reward_message(ball_line)
+    return True, BattleChallengeRewardResult(ball_line=ball_line, message=message)

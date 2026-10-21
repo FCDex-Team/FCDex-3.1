@@ -15,6 +15,7 @@ from ballsdex.core.discord import Container, LayoutView
 from bd_models.models import BallInstance, Player
 from fcdex_3_1.fcdex_ext import compat
 from fcdex_3_1.fcdex_ext.bd_helpers import stat_with_bonus
+from fcdex_3_1.fcdex_ext.club_pass_logic import schedule_catch_xp
 from fcdex_3_1.fcdex_ext.match_logic import card_power, roll_match
 from fcdex_3_1.fcdex_ext.rarity_logic import fetch_all_balls
 from fcdex_3_1.fcdex_ext.spawn_common import (
@@ -283,6 +284,7 @@ class MatchSpawnView(LayoutView):
             self.winner_id = None
             self.winner_mention = ""
             raise
+        schedule_catch_xp(instance, player)  # one payment per instance, even if the catch event pays it too
 
         self.prize_name = reward_ball.country
         content = reward.get_catch_message(instance, is_new, user.mention)
