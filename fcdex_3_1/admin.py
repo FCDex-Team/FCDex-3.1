@@ -2,6 +2,11 @@ from django.contrib import admin
 
 from .models import (
     Achievement,
+    DerbyClaim,
+    DerbyConfig,
+    DerbyLayout,
+    DerbySlot,
+    DerbyStats,
     MergeLog,
     MergeQuotaSettings,
     PackClaim,
@@ -261,3 +266,46 @@ class SpawnEventConfigAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+@admin.register(DerbyConfig)
+class DerbyConfigAdmin(admin.ModelAdmin):
+    list_display = (
+        "winner_coins_min",
+        "winner_coins_max",
+        "loser_coins",
+        "winner_xp_min",
+        "winner_xp_max",
+        "loser_xp",
+        "daily_limit",
+    )
+
+    def has_add_permission(self, request):
+        return not DerbyConfig.objects.exists()
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(DerbyStats)
+class DerbyStatsAdmin(admin.ModelAdmin):
+    list_display = ("player", "wins", "losses", "played")
+    raw_id_fields = ("player",)
+
+
+@admin.register(DerbyLayout)
+class DerbyLayoutAdmin(admin.ModelAdmin):
+    list_display = ("player", "formation")
+    raw_id_fields = ("player",)
+
+
+@admin.register(DerbySlot)
+class DerbySlotAdmin(admin.ModelAdmin):
+    list_display = ("player", "position", "slot", "ball")
+    raw_id_fields = ("player", "instance", "ball")
+
+
+@admin.register(DerbyClaim)
+class DerbyClaimAdmin(admin.ModelAdmin):
+    list_display = ("player", "played_at")
+    raw_id_fields = ("player",)

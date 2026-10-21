@@ -11,6 +11,7 @@ from fcdex_3_1.fcdex_ext.achievement_admin_views import build_achievement_admin_
 from fcdex_3_1.fcdex_ext.bd_resolve import resolve_ball_for_lookup
 from fcdex_3_1.fcdex_ext.boss_views import build_boss_admin_layout
 from fcdex_3_1.fcdex_ext.craft_admin_views import build_craft_admin_layout
+from fcdex_3_1.fcdex_ext.derby_admin_views import build_derby_admin_layout
 from fcdex_3_1.fcdex_ext.interaction_context import admin_context
 from fcdex_3_1.fcdex_ext.merge_admin_views import build_merge_admin_layout
 from fcdex_3_1.fcdex_ext.pack_admin_views import build_pack_admin_layout
@@ -123,6 +124,20 @@ class AdminHubControlsRow2(ActionRow):
         await interaction.response.send_modal(OwnersLookupModal(self.owner_id))
 
 
+class AdminHubControlsRow3(ActionRow):
+    def __init__(self, owner_id: int):
+        super().__init__()
+        self.owner_id = owner_id
+
+    @button(label="Derby", style=discord.ButtonStyle.primary, emoji="⚽")
+    async def derby(self, interaction: Interaction, button: Button):
+        if interaction.user.id != self.owner_id:
+            await interaction.response.send_message("This panel is not yours.", ephemeral=True)
+            return
+        layout = await build_derby_admin_layout(self.owner_id)
+        await interaction.response.edit_message(view=layout)
+
+
 class OwnersLookupModal(Modal, title="Clubball owners"):
     clubball = TextInput(label="Clubball", placeholder="Country name or PK (e.g. 42)", max_length=128)
 
@@ -157,13 +172,15 @@ def build_admin_hub_layout(owner_id: int, guild_id: int | None, channel_id: int)
                 "-# **Packs** — grant **Exclusive Pack** (admin-only; daily/weekly are `/pack`).\n"
                 "-# **Boss** — start raids here or in any channel/DM.\n"
                 "-# **Tournament** — set global caps for `/tournament manage`.\n"
-                "-# **Spawns** — twin & match spawn rates (bot owners)."
+                "-# **Spawns** — twin & match spawn rates (bot owners).\n"
+                "-# **Derby** — `/fc derby` coin & XP rewards and daily limit (bot owners)."
             )
         )
     )
     container.add_item(Separator())
     container.add_item(AdminHubControls(owner_id))
     container.add_item(AdminHubControlsRow2(owner_id))
+    container.add_item(AdminHubControlsRow3(owner_id))
     layout.add_item(container)
     return layout
 

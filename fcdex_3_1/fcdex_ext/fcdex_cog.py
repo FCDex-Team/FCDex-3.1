@@ -66,6 +66,8 @@ class FcdexCog(commands.GroupCog, group_name="fcdex"):
                 "### ⚽ Club match\n`/match challenge clubball:<name>` — try to win a rare clubball\n"
                 "-# **Twin spawns** (two clubballs, catch one) and **match spawns** (win a match for a rarer "
                 "clubball) can replace natural spawns · rates in `/fcdex admin` → **Spawns**",
+                "### 🥅 FC Derby\n`/fc derby layouts` — pick a formation · `/fc derby add` · `/fc derby show`\n"
+                "`/fc derby challenge` — squad vs squad for coins & Club Pass XP · `/fc derby status`",
                 "### ✨ Merge · 🏅 Achievements · 📊 Rarity · 🏆 Leaderboard",
                 "### 📋 List regime\n`/fcdex list regime:<name>` — browse clubballs by regime",
                 f"### 🛒 Shop\n`/fcdex shop` — buy bundles with {currency_noun(2)}",
@@ -238,6 +240,7 @@ class FcdexCog(commands.GroupCog, group_name="fcdex"):
             app_commands.Choice(name="Battles won", value="battles_won"),
             app_commands.Choice(name="Merges", value="merges"),
             app_commands.Choice(name="Tournament wins", value="tournament_wins"),
+            app_commands.Choice(name="Derby wins", value="derby_wins"),
         ],
         top=[app_commands.Choice(name="Top 10", value="10"), app_commands.Choice(name="Top 20", value="20")],
     )

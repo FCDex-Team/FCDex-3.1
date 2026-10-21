@@ -244,6 +244,11 @@ class _ModelsStub(ModuleType):
         self.MatchClaim = object
         self.BattleRewardClaim = object
         self.SpawnEventConfig = object
+        self.DerbyClaim = object
+        self.DerbyConfig = object
+        self.DerbyLayout = object
+        self.DerbySlot = object
+        self.DerbyStats = object
         self.TournamentConfig = object
         self.QuestDefinition = object
         self.QuestHook = _QuestHook

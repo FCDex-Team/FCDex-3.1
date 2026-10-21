@@ -587,3 +587,102 @@ class ShopPurchase(models.Model):
 
     def __str__(self) -> str:
         return f"{self.player_id} bought {self.bundle_id} @ {self.purchased_at}"
+
+
+class DerbyPosition(models.TextChoices):
+    GOALKEEPER = "GK", "Goalkeeper"
+    DEFENDER = "DF", "Defender"
+    MIDFIELDER = "MF", "Midfielder"
+    STRIKER = "ST", "Striker"
+
+
+class DerbyConfig(models.Model):
+    """Singleton row (pk=1) tuning `/fc derby challenge` rewards and its daily cap."""
+
+    winner_coins_min = models.PositiveIntegerField(default=150, help_text="Fewest coins a derby winner can earn.")
+    winner_coins_max = models.PositiveIntegerField(default=300, help_text="Most coins a derby winner can earn.")
+    loser_coins = models.PositiveIntegerField(default=50, help_text="Coins the loser gets (0 = none).")
+    winner_xp_min = models.PositiveIntegerField(default=20, help_text="Fewest Club Pass XP a derby winner can earn.")
+    winner_xp_max = models.PositiveIntegerField(default=30, help_text="Most Club Pass XP a derby winner can earn.")
+    loser_xp = models.PositiveIntegerField(default=10, help_text="Club Pass XP the loser gets.")
+    daily_limit = models.PositiveSmallIntegerField(
+        default=12, validators=[MinValueValidator(1)], help_text="Derbies each player can play per UTC day."
+    )
+
+    class Meta:
+        verbose_name = "Derby config"
+        verbose_name_plural = "Derby config"
+
+    def __str__(self) -> str:
+        return "Derby config"
+
+    def clean(self) -> None:
+        super().clean()
+        if self.winner_coins_min > self.winner_coins_max:
+            raise ValidationError("Winner coins minimum cannot be above the maximum.")
+        if self.winner_xp_min > self.winner_xp_max:
+            raise ValidationError("Winner XP minimum cannot be above the maximum.")
+
+
+class DerbyLayout(models.Model):
+    """The formation a player picked with `/fc derby layouts`."""
+
+    player = models.OneToOneField(Player, on_delete=models.CASCADE, related_name="derby_layout")
+    player_id: int
+    formation = models.CharField(max_length=16, default="4-3-3")
+
+    def __str__(self) -> str:
+        return f"Derby layout of player #{self.player_id}: {self.formation}"
+
+
+class DerbySlot(models.Model):
+    """One clubball placed in one slot of a player's derby formation."""
+
+    player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name="derby_slots")
+    player_id: int
+    position = models.CharField(max_length=2, choices=DerbyPosition.choices)
+    slot = models.PositiveSmallIntegerField(help_text="0-based slot number inside the position.")
+    instance = models.ForeignKey(BallInstance, on_delete=models.CASCADE, related_name="+")
+    instance_id: int
+    ball = models.ForeignKey(Ball, on_delete=models.CASCADE, related_name="+")
+    ball_id: int
+
+    class Meta:
+        ordering = ("position", "slot")
+        constraints = [
+            models.UniqueConstraint(fields=("player", "position", "slot"), name="fcdex_derby_slot_unique"),
+            models.UniqueConstraint(fields=("player", "ball"), name="fcdex_derby_ball_unique"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.player_id} · {self.position}{self.slot + 1}"
+
+
+class DerbyStats(models.Model):
+    player = models.OneToOneField(Player, on_delete=models.CASCADE, related_name="derby_stats")
+    player_id: int
+    wins = models.PositiveIntegerField(default=0)
+    losses = models.PositiveIntegerField(default=0)
+    played = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        verbose_name = "Derby stats"
+        verbose_name_plural = "Derby stats"
+
+    def __str__(self) -> str:
+        return f"Derby stats for player #{self.player_id}"
+
+
+class DerbyClaim(models.Model):
+    """One played derby. Rows are created before the match so the daily cap cannot be raced."""
+
+    player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name="derby_claims")
+    player_id: int
+    played_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-played_at",)
+        indexes = [models.Index(fields=("player", "-played_at"), name="fcdex_derby_player_played_idx")]
+
+    def __str__(self) -> str:
+        return f"{self.player_id} · derby @ {self.played_at:%Y-%m-%d %H:%M}"

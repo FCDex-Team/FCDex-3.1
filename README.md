@@ -74,6 +74,25 @@ the Django admin under **Spawn events config**.
 Catches go through BallsDex's own catch pipeline, so specials, stat bonuses, hooks, events and metrics behave exactly
 like a normal catch. Defaults: twin **10%**, match **2%** of natural spawns, match difficulty **110%**.
 
+### 🥅 FC Derby
+
+Build an 11-player squad in a formation and play squad-vs-squad derbies for **coins and Club Pass XP** (no clubballs are
+won). Commands live under a top-level `fc` group with a `derby` subgroup.
+
+| Command | Description |
+| ------- | ----------- |
+| `/fc derby layouts` | Browse formation pictures (4-3-3, 4-4-2, 3-5-2, 4-2-3-1, 5-3-2) · **Next** / **Accept** |
+| `/fc derby add position:<GK\|DF\|MF\|ST> clubball:<card> [slot]` | Put a clubball in the first free slot of that position (or replace `slot`). A club can only appear once in your squad |
+| `/fc derby remove position slot` | Empty a slot |
+| `/fc derby show` | Your squad drawn on the pitch with the clubball pictures |
+| `/fc derby status [milestone]` | Derby record and Club Pass level / XP (shows "Club Pass not available" without the Club Pass) |
+| `/fc derby challenge challenger:@user` | Both players need a full 11-slot squad. The challenged player accepts, then the match is simulated with commentary |
+
+Rewards (defaults, editable in `/fcdex admin` → **Derby** or the Django admin under **Derby config**): the winner gets
+**150-300** coins and **20-30** Club Pass XP, the loser **50** coins and **10** XP. Each player can play **12 derbies per
+UTC day** (the challenger and the challenged player both use one), and only one derby can run per player at a time.
+`/fcdex leaderboard sort:Derby wins` ranks derby wins.
+
 ### ✨ Merge · 🏅 Achievements · 📊 Rarity · 🏆 Leaderboard
 
 - **Merge** — 7-tier forge, same clubball only (`/merge`)
@@ -116,7 +135,7 @@ docker compose build && docker compose up -d
 ### Upgrading
 
 - Set `path = "fcdex_3_1"` and pin the latest tag (e.g. **`@3.1.7`**).
-- Run migrations through **`0022`** (special spawn settings). `0021` only syncs migration metadata.
+- Run migrations through **`0023`** (FC Derby). `0021` only syncs migration metadata.
 - Django app **label stays `fcdex_3_0`** for database compatibility.
 - Enable economy: admin **Settings** → set **`currency_name`** (e.g. `coin`). Amounts follow your currency name,
   plural, symbol and emoji settings.

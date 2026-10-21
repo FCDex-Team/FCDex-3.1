@@ -31,6 +31,7 @@ class LeaderboardMetric(StrEnum):
     BATTLES_WON = "battles_won"
     MERGES = "merges"
     TOURNAMENT_WINS = "tournament_wins"
+    DERBY_WINS = "derby_wins"
 
 
 METRIC_LABELS: dict[LeaderboardMetric, str] = {
@@ -38,6 +39,7 @@ METRIC_LABELS: dict[LeaderboardMetric, str] = {
     LeaderboardMetric.BATTLES_WON: "Battles won",
     LeaderboardMetric.MERGES: "Merges",
     LeaderboardMetric.TOURNAMENT_WINS: "Tournament wins",
+    LeaderboardMetric.DERBY_WINS: "Derby wins",
 }
 
 METRIC_UNITS: dict[LeaderboardMetric, str] = {
@@ -45,13 +47,27 @@ METRIC_UNITS: dict[LeaderboardMetric, str] = {
     LeaderboardMetric.BATTLES_WON: "wins",
     LeaderboardMetric.MERGES: "merges",
     LeaderboardMetric.TOURNAMENT_WINS: "tournament wins",
+    LeaderboardMetric.DERBY_WINS: "derby wins",
 }
 
 STAT_FIELDS: dict[LeaderboardMetric, str] = {
     LeaderboardMetric.BATTLES_WON: "battles_won",
     LeaderboardMetric.MERGES: "merges_completed",
     LeaderboardMetric.TOURNAMENT_WINS: "tournament_wins",
+    LeaderboardMetric.DERBY_WINS: "wins",
 }
+
+# Related name of the stats row that holds each metric (everything else lives on `fcdex_stats`).
+STAT_RELATIONS: dict[LeaderboardMetric, str] = {LeaderboardMetric.DERBY_WINS: "derby_stats"}
+
+
+def stat_relation(metric: LeaderboardMetric) -> str:
+    return STAT_RELATIONS.get(metric, "fcdex_stats")
+
+
+def stat_lookup(metric: LeaderboardMetric) -> str:
+    """ORM lookup from a Player to the stat behind `metric`."""
+    return f"{stat_relation(metric)}__{STAT_FIELDS[metric]}"
 
 
 @dataclass(frozen=True, slots=True)
@@ -213,10 +229,9 @@ async def _fetch_global_clubballs(*, limit: int) -> list[LeaderboardEntry]:
 
 
 async def _fetch_global_stats(metric: LeaderboardMetric, *, limit: int) -> list[LeaderboardEntry]:
-    field = STAT_FIELDS[metric]
     qs = (
         _exclude_bots(Player.objects.all())
-        .annotate(score=Coalesce(F(f"fcdex_stats__{field}"), Value(0)))
+        .annotate(score=Coalesce(F(stat_lookup(metric)), Value(0)))
         .filter(score__gt=0)
         .order_by("-score", "pk")
         .values("discord_id", "score")[:limit]
@@ -275,16 +290,17 @@ async def _viewer_global_clubballs(viewer_discord_id: int) -> tuple[int | None, 
 
 async def _viewer_global_stats(viewer_discord_id: int, metric: LeaderboardMetric) -> tuple[int | None, int]:
     field = STAT_FIELDS[metric]
-    player = await Player.objects.filter(discord_id=viewer_discord_id).select_related("fcdex_stats").afirst()
+    relation = stat_relation(metric)
+    player = await Player.objects.filter(discord_id=viewer_discord_id).select_related(relation).afirst()
     if player is None:
         return None, 0
-    stats = getattr(player, "fcdex_stats", None)
+    stats = getattr(player, relation, None)
     score = getattr(stats, field, 0) if stats is not None else 0
     if score <= 0:
         return None, 0
     higher = (
         await _exclude_bots(Player.objects.all())
-        .annotate(score=Coalesce(F(f"fcdex_stats__{field}"), Value(0)))
+        .annotate(score=Coalesce(F(stat_lookup(metric)), Value(0)))
         .filter(score__gt=score)
         .acount()
     )
