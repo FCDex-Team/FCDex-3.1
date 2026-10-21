@@ -68,6 +68,8 @@ class FcdexCog(commands.GroupCog, group_name="fcdex"):
                 "clubball) can replace natural spawns · rates in `/fcdex admin` → **Spawns**",
                 "### 🥅 FC Derby\n`/fc derby layouts` — pick a formation · `/fc derby add` · `/fc derby show`\n"
                 "`/fc derby challenge` — squad vs squad for coins & Club Pass XP · `/fc derby status`",
+                "### 🎟️ Club pass\n`/club pass` — level up to 50 for coins & clubballs · seasons set in "
+                "`/fcdex admin` → **Club Pass**",
                 "### ✨ Merge · 🏅 Achievements · 📊 Rarity · 🏆 Leaderboard",
                 "### 📋 List regime\n`/fcdex list regime:<name>` — browse clubballs by regime",
                 f"### 🛒 Shop\n`/fcdex shop` — buy bundles with {currency_noun(2)}",

@@ -686,3 +686,106 @@ class DerbyClaim(models.Model):
 
     def __str__(self) -> str:
         return f"{self.player_id} · derby @ {self.played_at:%Y-%m-%d %H:%M}"
+
+
+class PassTrack(models.TextChoices):
+    NORMAL = "normal", "Normal"
+    PREMIUM = "premium", "Premium"
+
+
+class PassRewardType(models.TextChoices):
+    NONE = "none", "Nothing"
+    COINS = "coins", "Coins"
+    BALL = "ball", "Specific clubball"
+    RANDOM_COMMON = "random_common", "Random common clubball"
+
+
+class PassSeason(models.Model):
+    name = models.CharField(max_length=64)
+    starts_at = models.DateTimeField()
+    ends_at = models.DateTimeField()
+    active = models.BooleanField(default=True, help_text="Only one season runs at a time, it ends on its end date.")
+
+    class Meta:
+        ordering = ("-starts_at",)
+        verbose_name = "Club pass season"
+        verbose_name_plural = "Club pass seasons"
+        indexes = [models.Index(fields=("active", "-starts_at"), name="fcdex_passseason_active_idx")]
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class PassLevelReward(models.Model):
+    season = models.ForeignKey(PassSeason, on_delete=models.CASCADE, related_name="level_rewards")
+    season_id: int
+    level = models.PositiveSmallIntegerField(validators=[MinValueValidator(1), MaxValueValidator(50)])
+    track = models.CharField(max_length=16, choices=PassTrack.choices, default=PassTrack.NORMAL)
+    reward_type = models.CharField(max_length=16, choices=PassRewardType.choices, default=PassRewardType.NONE)
+    coins = models.PositiveIntegerField(default=0)
+    ball = models.ForeignKey(Ball, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    ball_id: int | None
+    label = models.CharField(max_length=64, blank=True, default="")
+
+    class Meta:
+        ordering = ("season", "level", "track")
+        verbose_name = "Club pass level reward"
+        verbose_name_plural = "Club pass level rewards"
+        constraints = [
+            models.UniqueConstraint(fields=("season", "level", "track"), name="fcdex_passreward_unique_level")
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.season_id} · L{self.level} {self.track} · {self.reward_type}"
+
+
+class PassSeasonClub(models.Model):
+    season = models.ForeignKey(PassSeason, on_delete=models.CASCADE, related_name="clubs")
+    season_id: int
+    ball = models.ForeignKey(Ball, on_delete=models.CASCADE, related_name="+")
+    ball_id: int
+
+    class Meta:
+        verbose_name = "Club pass season club"
+        verbose_name_plural = "Club pass season clubs"
+        constraints = [models.UniqueConstraint(fields=("season", "ball"), name="fcdex_passclub_unique")]
+
+    def __str__(self) -> str:
+        return f"{self.season_id} · ball #{self.ball_id}"
+
+
+class PlayerPass(models.Model):
+    player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name="club_passes")
+    player_id: int
+    season = models.ForeignKey(PassSeason, on_delete=models.CASCADE, related_name="players")
+    season_id: int
+    xp_total = models.PositiveBigIntegerField(default=0)
+    premium = models.BooleanField(default=False)
+
+    class Meta:
+        verbose_name = "Club pass progress"
+        verbose_name_plural = "Club pass progress"
+        constraints = [models.UniqueConstraint(fields=("player", "season"), name="fcdex_playerpass_unique")]
+
+    def __str__(self) -> str:
+        return f"{self.player_id} · season {self.season_id} · {self.xp_total} xp"
+
+
+class PassRewardClaim(models.Model):
+    player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name="club_pass_claims")
+    player_id: int
+    season = models.ForeignKey(PassSeason, on_delete=models.CASCADE, related_name="claims")
+    season_id: int
+    level = models.PositiveSmallIntegerField()
+    track = models.CharField(max_length=16, choices=PassTrack.choices)
+    claimed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Club pass reward claim"
+        verbose_name_plural = "Club pass reward claims"
+        constraints = [
+            models.UniqueConstraint(fields=("player", "season", "level", "track"), name="fcdex_passclaim_unique")
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.player_id} · L{self.level} {self.track}"

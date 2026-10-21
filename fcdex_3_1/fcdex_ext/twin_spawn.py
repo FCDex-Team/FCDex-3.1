@@ -12,6 +12,7 @@ from discord.ui import ActionRow, Button, MediaGallery, TextDisplay, TextInput, 
 from ballsdex.core.discord import Container, LayoutView, Modal
 from bd_models.models import Player
 from fcdex_3_1.fcdex_ext import compat
+from fcdex_3_1.fcdex_ext.club_pass_logic import schedule_catch_xp
 from fcdex_3_1.fcdex_ext.rarity_logic import fetch_all_balls
 from fcdex_3_1.fcdex_ext.spawn_common import (
     ACCENT_TWIN,
@@ -202,6 +203,7 @@ class TwinSpawnView(LayoutView):
             self.caught_slot = None
             engine.caught = False
             raise
+        schedule_catch_xp(ball, player)  # one payment per instance, even if the catch event pays it too
 
         content = engine.get_catch_message(ball, is_new, interaction.user.mention)
         catch_message = await compat.run_hook(

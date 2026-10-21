@@ -137,6 +137,16 @@ class AdminHubControlsRow3(ActionRow):
         layout = await build_derby_admin_layout(self.owner_id)
         await interaction.response.edit_message(view=layout)
 
+    @button(label="Club Pass", style=discord.ButtonStyle.primary, emoji="🎟️")
+    async def club_pass(self, interaction: Interaction, button: Button):
+        if interaction.user.id != self.owner_id:
+            await interaction.response.send_message("This panel is not yours.", ephemeral=True)
+            return
+        from fcdex_3_1.fcdex_ext.club_pass_admin_views import build_pass_admin_layout
+
+        layout = await build_pass_admin_layout(self.owner_id)
+        await interaction.response.edit_message(view=layout)
+
 
 class OwnersLookupModal(Modal, title="Clubball owners"):
     clubball = TextInput(label="Clubball", placeholder="Country name or PK (e.g. 42)", max_length=128)
@@ -173,7 +183,8 @@ def build_admin_hub_layout(owner_id: int, guild_id: int | None, channel_id: int)
                 "-# **Boss** — start raids here or in any channel/DM.\n"
                 "-# **Tournament** — set global caps for `/tournament manage`.\n"
                 "-# **Spawns** — twin & match spawn rates (bot owners).\n"
-                "-# **Derby** — `/fc derby` coin & XP rewards and daily limit (bot owners)."
+                "-# **Derby** — `/fc derby` coin & XP rewards and daily limit (bot owners).\n"
+                "-# **Club Pass** — seasons, level rewards, season clubs & premium."
             )
         )
     )
