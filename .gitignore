@@ -11,3 +11,6 @@ wheels/
 
 # Typecheck vendor (BallsDex source for Pyright)
 .vendor/
+
+.claude/
+.vendor/

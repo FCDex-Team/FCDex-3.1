@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.12", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install -e ".[dev]"
+      - run: ruff check .
+      - run: pytest -q
+
+  host:
+    name: BallsDex ${{ matrix.host }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        host: [release/3.1.0, release/3.2.0, v3]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: fcdex
+      - uses: actions/checkout@v4
+        with:
+          repository: Ballsdex-Team/BallsDex-DiscordBot
+          ref: ${{ matrix.host }}
+          path: host
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - name: Install BallsDex dependencies
+        run: |
+          pip install "django==6.0.0" django-allow-cidr django-nonrelated-inlines django-admin-autocomplete-filter \
+            django-admin-action-forms django-admin-inline-paginator dj-database-url social-auth-app-django \
+            prometheus-client rich python-dateutil Pillow pyyaml cachetools "sentry-sdk[django]" aiohttp
+          pip install "discord.py @ git+https://github.com/Rapptz/discord.py.git@c342db853486ef6e26d72b10bf901e951c4b4d8e"
+      - name: Migrations apply and match models.py
+        env:
+          PYTHONPATH: ${{ github.workspace }}/.github-ci:${{ github.workspace }}/fcdex/.github/ci:${{ github.workspace }}/host/admin_panel:${{ github.workspace }}/host:${{ github.workspace }}/fcdex
+          DJANGO_SETTINGS_MODULE: hsettings
+          BALLSDEXBOT_DB_URL: sqlite:///${{ github.workspace }}/ci.sqlite3
+          BALLSDEXBOT_EXTRA_TOML: ${{ github.workspace }}/fcdex/.github/ci/extra.toml
+          BALLSDEX_LOG_DIR: ${{ github.workspace }}
+          FC_UPSTREAM: ${{ github.workspace }}/host
+        run: |
+          python -m django check
+          python -m django migrate
+          python -m django makemigrations --check --dry-run
