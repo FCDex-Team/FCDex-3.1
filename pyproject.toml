@@ -11,17 +11,10 @@ license-files = ["LICENSE"]
 authors = [
   { name = "arielaram" },
   { name = "fcdex" },
-  { name = "astro.fr" },
-  { name = "abdulc._" },
+  { name = "s_a.e" },
 ]
 requires-python = ">=3.12"
 readme = "README.md"
-dependencies = []
-
-[project.urls]
-Repository = "https://github.com/FCDex-Team/FCDex-3.1"
-Documentation = "https://github.com/FCDex-Team/FCDex-3.1#readme"
-Issues = "https://github.com/FCDex-Team/FCDex-3.1/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -32,13 +25,41 @@ fcdex_3_1 = ["media/*", "extra.toml", "media/merge_cards.toml"]
 
 [project.optional-dependencies]
 dev = [
-  "ruff>=0.14.1",
-  "pyright>=1.1.406",
-  "django>=6.0.7",
+  "ruff==0.14.1",
+  "pyright==1.1.406",
+  "django>=6.0.8",
   "django-types",
   "pytest>=8.0",
-  "discord.py>=2.4",
+  "discord.py",
+  "pillow==12.0.0",
+  "pyyaml==6.0.3",
+  "cachetools==6.2.1",
+  "sentry-sdk[django]==2.42.0",
+  "prometheus-client==0.23.1",
+  "rich==14.2.0",
+  "python-dateutil>=2.9.0",
+  "uvicorn[standard]==0.37.0",
+  "django-allow-cidr==0.8.0",
+  "django-nonrelated-inlines==0.2",
+  "django-admin-autocomplete-filter==0.7.1",
+  "django-admin-action-forms==2.2.0",
+  "django-admin-inline-paginator==0.4.0",
+  "dj-database-url==3.0.1",
+  "social-auth-app-django==5.6.0",
 ]
+
+[tool.uv.sources]
+django-types = { git = "https://github.com/sbdchd/django-types.git", rev = "dadf37d11b2ea5517b5d5bfc51d9f93c649c5546" }
+"discord.py" = { git = "https://github.com/Rapptz/discord.py.git", rev = "c342db853486ef6e26d72b10bf901e951c4b4d8e" }
+
+[tool.uv.override-dependencies]
+# CVE patches & security constraints
+django = ">=6.0.8"       # CVE-2024-53907, CVE-2024-53908, CVE-2025-26699
+aiohttp = ">=3.11.12"    # CVE-2024-52304, CVE-2024-52303, CVE-2024-30251
+uvicorn = ">=0.37.0"     # CVE-2024-47874
+urllib3 = ">=2.2.2"      # CVE-2024-37891
+pillow = ">=12.0.0"      # CVE-2024-28219
+pyyaml = ">=6.0.3"       # CVE-2020-14343
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
