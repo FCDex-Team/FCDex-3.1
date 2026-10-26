@@ -214,14 +214,6 @@ def build_battle_result_layout(
     return layout
 
 
-def build_achievement_layout(title: str, body: str, *, subtitle: str = "", footer: str = "") -> LayoutView:
-    return build_panel_layout(title=title, subtitle=subtitle, sections=[body] if body else None, footer=footer)
-
-
-def build_tournament_layout(title: str, sections: list[str], *, subtitle: str = "") -> LayoutView:
-    return build_panel_layout(title=title, subtitle=subtitle, sections=sections)
-
-
 def match_log_file(log_lines: list[str]) -> discord.File:
     return discord.File(io.BytesIO("\n".join(log_lines).encode()), filename="match-commentary.txt")
 
